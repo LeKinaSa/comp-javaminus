@@ -1,0 +1,69 @@
+options {
+    LOOKAHEAD = 1;
+}
+
+SKIP : {
+    " " | "\r" | "\t" | "\n"
+}
+
+TOKEN : {
+    <IMPORT: "import">
+    | <CLASS: "class">
+    | <EXTENDS: "extends">
+    | <PUBLIC: "public">
+    | <INT: "int">
+    | <BOOLEAN: "boolean">
+    | <RETURN: "return">
+    | <STATIC: "static">
+    | <VOID: "void">
+    | <MAIN: "main">
+    | <STRING: "string">
+    | <IDENTIFIER: ["a"-"z", "A"-"Z"](["a"-"z", "A"-"Z", "0"-"9", "_"])*>
+    | <LBR: "{">
+    | <RBR: "}">
+    | <LSQBR: "[">
+    | <RSQBR: "]">
+    | <LPAR: "(">
+    | <RPAR: ")">
+    | <DOT: ".">
+    | <COMMA: ",">
+    | <SEMICOLON: ";">
+}
+
+void Program() : {} {
+    ImportDeclaration() ClassDeclaration()
+}
+
+void ImportDeclaration() : {} {
+    (<IMPORT> <IDENTIFIER> (<DOT> <IDENTIFIER>)* <SEMICOLON>)*
+}
+
+void ClassDeclaration() : {} {
+    <CLASS> <IDENTIFIER> (<EXTENDS> <IDENTIFIER>)? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
+}
+
+void VarDeclaration() : {} {
+    Type() <IDENTIFIER> <SEMICOLON>
+}
+
+void MethodDeclaration() : {} {
+    (<PUBLIC> Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
+    <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
+    | (<PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <RSQBR> <LSQBR> <IDENTIFIER> <RPAR> <LBR>
+    (VarDeclaration())* (Statement())* <RBR>)
+}
+
+void Type() : {} {
+    (<INT> <LSQBR> <RSQBR>)
+    | <BOOLEAN>
+    | <INT>
+    | <IDENTIFIER>
+}
+
+void Statement() : {} {
+
+}
+
+void Expression() : {} {
+
+}

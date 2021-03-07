@@ -3,3 +3,5 @@
 /build/
 /generated/
 comp2021-*.jar
+
+*.idea/
