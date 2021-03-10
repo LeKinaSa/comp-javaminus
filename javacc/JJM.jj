@@ -18,6 +18,10 @@ TOKEN : {
     | <VOID: "void">
     | <MAIN: "main">
     | <STRING: "string">
+    | <IF: "if">
+    | <ELSE: "else">
+    | <WHILE: "while">
+    | <ASSIGN: "=">
     | <IDENTIFIER: ["a"-"z", "A"-"Z"](["a"-"z", "A"-"Z", "0"-"9", "_"])*>
     | <LBR: "{">
     | <RBR: "}">
@@ -61,7 +65,12 @@ void Type() : {} {
 }
 
 void Statement() : {} {
-
+    (<LBR> Statement() <RBR>)
+    | (<IF> <LPAR> Statement() <RPAR> Statement() <ELSE> Statement)
+    | (<WHILE> <LPAR> Expression() <RPAR> Statement)
+    | (Expression() <SEMICOLON>)
+    | (<IDENTIFIER> <ASSIGN> Expression() <SEMICOLON>)
+    | (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
 }
 
 void Expression() : {} {
