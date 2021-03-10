@@ -21,8 +21,14 @@ TOKEN : {
     | <IF: "if">
     | <ELSE: "else">
     | <WHILE: "while">
-    | <ASSIGN: "=">
+    | <LENGTH: "length">
+    | <TRUE: "true">
+    | <FALSE: "false">
+    | <THIS: "this">
+    | <NEW: "new">
     | <IDENTIFIER: ["a"-"z", "A"-"Z"](["a"-"z", "A"-"Z", "0"-"9", "_"])*>
+    | <INTEGER_LITERAL: ["0"-"9"](["0"-"9"])*>
+    | <ASSIGN: "=">
     | <LBR: "{">
     | <RBR: "}">
     | <LSQBR: "[">
@@ -32,6 +38,13 @@ TOKEN : {
     | <DOT: ".">
     | <COMMA: ",">
     | <SEMICOLON: ";">
+    | <AND: "&&">
+    | <LT: "<">
+    | <SUM: "+">
+    | <SUB: "-">
+    | <MUL: "*">
+    | <DIV: "/">
+    | <NOT: "!">
 }
 
 void Program() : {} {
@@ -66,13 +79,25 @@ void Type() : {} {
 
 void Statement() : {} {
     (<LBR> (Statement())* <RBR>)
-    | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement)
-    | (<WHILE> <LPAR> Expression() <RPAR> Statement)
+    | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
+    | (<WHILE> <LPAR> Expression() <RPAR> Statement())
     | (Expression() <SEMICOLON>)
     | (<IDENTIFIER> <ASSIGN> Expression() <SEMICOLON>)
     | (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
 }
 
 void Expression() : {} {
-
+    (Expression() (<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression())
+    | (Expression() <LSQBR> Expression() <RSQBR>)
+    | (Expression() <DOT> <LENGTH>)
+    | (Expression() <DOT> <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>)
+    | <INTEGER_LITERAL>
+    | <TRUE>
+    | <FALSE>
+    | <IDENTIFIER>
+    | <THIS>
+    | (<NEW> <INT> <LSQBR> Expression() <RSQBR>)
+    | (<NEW> <IDENTIFIER> <LPAR> <RPAR>)
+    | (<NOT> Expression())
+    | (<LPAR> Expression() <RPAR>)
 }
