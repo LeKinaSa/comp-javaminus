@@ -8,12 +8,9 @@ import java.util.ArrayList;
 import java.io.StringReader;
 
 public class Main implements JmmParser {
-
-
 	public JmmParserResult parse(String jmmCode) {
-		
 		try {
-		    Calculator myCalc = new Calculator(new StringReader(jmmCode));
+			JMM myCalc = new JMM(new StringReader(jmmCode));
     		SimpleNode root = myCalc.Expression(); // returns reference to root node
             	
     		root.dump(""); // prints the tree on the screen

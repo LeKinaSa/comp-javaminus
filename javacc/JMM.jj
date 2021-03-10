@@ -2,6 +2,18 @@ options {
     LOOKAHEAD = 1;
 }
 
+PARSER_BEGIN(JMM)
+
+public class JMM {
+    public static void main(String[] args){
+        JMM jjm = new JMM(System.in);
+
+        jjm.Program();
+    }
+}
+
+PARSER_END(JMM)
+
 SKIP : {
     " " | "\r" | "\t" | "\n"
 }
