@@ -10,9 +10,9 @@ import java.io.StringReader;
 public class Main implements JmmParser {
 	public JmmParserResult parse(String jmmCode) {
 		try {
-			JMM myCalc = new JMM(new StringReader(jmmCode));
-    		SimpleNode root = myCalc.Expression(); // returns reference to root node
-            	
+			JMM jmm = new JMM(new StringReader(jmmCode));
+    		SimpleNode root = jmm.Program(); // returns reference to root node
+
     		root.dump(""); // prints the tree on the screen
     	
     		return new JmmParserResult(root, new ArrayList<Report>());

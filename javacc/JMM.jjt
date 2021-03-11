@@ -1,14 +1,19 @@
 options {
-    LOOKAHEAD = 1;
+    LOOKAHEAD = 3;
+    FORCE_LA_CHECK = true;
 }
 
 PARSER_BEGIN(JMM)
 
-public class JMM {
-    public static void main(String[] args){
-        JMM jjm = new JMM(System.in);
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 
-        jjm.Program();
+public class JMM {
+    public static void main(String[] args) throws ParseException, FileNotFoundException {
+        JMM jmm = new JMM(new FileInputStream(args[0]));
+        SimpleNode root = jmm.Program(); // returns reference to root node
+
+        root.dump(""); // prints the tree on the screen
     }
 }
 
@@ -29,7 +34,7 @@ TOKEN : {
     | <STATIC: "static">
     | <VOID: "void">
     | <MAIN: "main">
-    | <STRING: "string">
+    | <STRING: "String">
     | <IF: "if">
     | <ELSE: "else">
     | <WHILE: "while">
@@ -59,8 +64,8 @@ TOKEN : {
     | <NOT: "!">
 }
 
-void Program() : {} {
-    ImportDeclaration() ClassDeclaration()
+SimpleNode Program() : {} {
+    ImportDeclaration() ClassDeclaration() <EOF> { return jjtThis; }
 }
 
 void ImportDeclaration() : {} {
@@ -78,7 +83,7 @@ void VarDeclaration() : {} {
 void MethodDeclaration() : {} {
     (<PUBLIC> Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
     <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
-    | (<PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <RSQBR> <LSQBR> <IDENTIFIER> <RPAR> <LBR>
+    | (<PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
     (VarDeclaration())* (Statement())* <RBR>)
 }
 
@@ -99,17 +104,21 @@ void Statement() : {} {
 }
 
 void Expression() : {} {
-    (Expression() (<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression())
-    | (Expression() <LSQBR> Expression() <RSQBR>)
-    | (Expression() <DOT> <LENGTH>)
-    | (Expression() <DOT> <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>)
-    | <INTEGER_LITERAL>
-    | <TRUE>
-    | <FALSE>
-    | <IDENTIFIER>
-    | <THIS>
-    | (<NEW> <INT> <LSQBR> Expression() <RSQBR>)
-    | (<NEW> <IDENTIFIER> <LPAR> <RPAR>)
-    | (<NOT> Expression())
-    | (<LPAR> Expression() <RPAR>)
+    <INTEGER_LITERAL> ExpressionL()
+    | <TRUE> ExpressionL()
+    | <FALSE> ExpressionL()
+    | <IDENTIFIER> ExpressionL()
+    | <THIS> ExpressionL()
+    | (<NEW> <INT> <LSQBR> Expression() <RSQBR> ExpressionL())
+    | (<NEW> <IDENTIFIER> <LPAR> <RPAR> ExpressionL())
+    | (<NOT> Expression() ExpressionL())
+    | (<LPAR> Expression() <RPAR> ExpressionL())
+}
+
+void ExpressionL() : {} {
+    ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL())
+    | (<LSQBR> Expression() <RSQBR> ExpressionL())
+    | (<DOT> <LENGTH> ExpressionL())
+    | (<DOT> <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR> ExpressionL())
+    | {}
 }
