@@ -121,7 +121,7 @@ void AuxiliarExpressionStatement() : {} {
     | (<NEW> ExpressionNew()) <SEMICOLON>
     | (<NOT> Expression() ExpressionL()) <SEMICOLON>
     | (<LPAR> Expression() <RPAR> ExpressionL()) <SEMICOLON>
-    |
+    
 }
 
 void AuxiliarExpressionLStatement() : {} {
