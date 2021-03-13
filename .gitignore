@@ -5,3 +5,6 @@
 comp2021-*.jar
 
 *.idea/
+.settings/org.eclipse.buildship.core.prefs
+.classpath
+.project

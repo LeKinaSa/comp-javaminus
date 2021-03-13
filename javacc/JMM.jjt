@@ -103,20 +103,21 @@ void Type() : {} {
 }
 
 void Statement() : {} {
-    (<LBR> (Statement())* <RBR>)
+    // (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+    AuxiliarExpressionStatement()
+    | (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
     | (<WHILE> <LPAR> Expression() <RPAR> Statement())
-    | AuxiliarExpressionStatement()
     // | (Expression() <SEMICOLON>)
     // | (<IDENTIFIER> StatementAssign())
 }
 
 void AuxiliarExpressionStatement() : {} {
-    <INTEGER_LITERAL> ExpressionL() <SEMICOLON>
+    (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
+    | <INTEGER_LITERAL> ExpressionL() <SEMICOLON>
     | <TRUE> ExpressionL() <SEMICOLON>
     | <FALSE> ExpressionL() <SEMICOLON>
     // | <IDENTIFIER> (ExpressionL() <SEMICOLON> | StatementAssign()) // Changed line
-    | <IDENTIFIER> (AuxiliarExpressionLStatement()) // Changed line
     | <THIS> ExpressionL() <SEMICOLON>
     | (<NEW> ExpressionNew()) <SEMICOLON>
     | (<NOT> Expression() ExpressionL()) <SEMICOLON>
@@ -125,17 +126,17 @@ void AuxiliarExpressionStatement() : {} {
 }
 
 void AuxiliarExpressionLStatement() : {} {
-    ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()) <SEMICOLON>
-    | (<LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression() <SEMICOLON>)) // Changed Line
+    (<LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression() <SEMICOLON>)) // Changed Line
+    | ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL() <SEMICOLON>)
     | (<DOT> ExpressionLDot()) <SEMICOLON>
-    | (<ASSIGN> Expression() <SEMICOLON>) <SEMICOLON>
+    | (<ASSIGN> Expression() <SEMICOLON>)
     // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
     | {}
 }
 
-void StatementAssign() : {} {
-    (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
-}
+// void StatementAssign() : {} {
+//     (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+// }
 
 void Expression() : {} {
     <INTEGER_LITERAL> ExpressionL()
@@ -149,7 +150,8 @@ void Expression() : {} {
 }
 
 void ExpressionNew() : {} {
-    (<INT> <LSQBR> Expression() <RSQBR> ExpressionL() | <IDENTIFIER> <LPAR> <RPAR> ExpressionL())
+    (<INT> <LSQBR> Expression() <RSQBR> ExpressionL())
+    | (<IDENTIFIER> <LPAR> <RPAR> ExpressionL())
 }
 
 void ExpressionL() : {} {
@@ -160,5 +162,6 @@ void ExpressionL() : {} {
 }
 
 void ExpressionLDot() : {} {
-    (<LENGTH> ExpressionL() | <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR> ExpressionL())
+    (<IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR> ExpressionL())
+    | (<LENGTH> ExpressionL())
 }
