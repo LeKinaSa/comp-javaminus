@@ -98,12 +98,12 @@ void Type() : {} {
 }
 
 void Statement() : {} {
-    (<LBR> (Statement())* <RBR>)
+    (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+    | (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
     | (<WHILE> <LPAR> Expression() <RPAR> Statement())
     | (Expression() <SEMICOLON>)
     | (<IDENTIFIER> <ASSIGN> Expression() <SEMICOLON>)
-    | (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
 }
 
 void Expression() : {} {
