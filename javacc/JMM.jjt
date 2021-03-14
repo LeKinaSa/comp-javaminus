@@ -1,5 +1,5 @@
 options {
-    LOOKAHEAD = 3;
+    LOOKAHEAD = 1;
     FORCE_LA_CHECK = true;
 }
 
@@ -43,7 +43,7 @@ TOKEN : {
     | <FALSE: "false">
     | <THIS: "this">
     | <NEW: "new">
-    | <IDENTIFIER: ["a"-"z", "A"-"Z"](["a"-"z", "A"-"Z", "0"-"9", "_"])*>
+    | <IDENTIFIER: (["a"-"z", "A"-"Z", "_", "$"](["a"-"z", "A"-"Z", "0"-"9", "_", "$"])+ | ["a"-"z", "A"-"Z"](["a"-"z", "A"-"Z", "0"-"9", "_", "$"])*)>
     | <INTEGER_LITERAL: ["0"-"9"](["0"-"9"])*>
     | <ASSIGN: "=">
     | <LBR: "{">
@@ -81,14 +81,18 @@ void VarDeclaration() : {} {
 }
 
 void MethodDeclaration() : {} {
-    <PUBLIC> PublicMethodDeclaration()
+    <PUBLIC> MethodDeclarationAux()
+    // (<PUBLIC> Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
+    // <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
+    // | (<PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
+    // (VarDeclaration())* (Statement())* <RBR>)
 }
 
-void PublicMethodDeclaration() : {} {
+void MethodDeclarationAux() : {} {
     (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
+    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
-    (VarDeclaration())* (Statement())* <RBR>)
+    (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
 
 void Type() : {} {
@@ -98,13 +102,39 @@ void Type() : {} {
 }
 
 void Statement() : {} {
-    (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+    // (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+    AuxiliarExpressionStatement()
     | (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
     | (<WHILE> <LPAR> Expression() <RPAR> Statement())
-    | (Expression() <SEMICOLON>)
-    | (<IDENTIFIER> <ASSIGN> Expression() <SEMICOLON>)
+    // | (Expression() <SEMICOLON>)
+    // | (<IDENTIFIER> StatementAssign())
 }
+
+void AuxiliarExpressionStatement() : {} {
+    (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
+    | <INTEGER_LITERAL> ExpressionL() <SEMICOLON>
+    | <TRUE> ExpressionL() <SEMICOLON>
+    | <FALSE> ExpressionL() <SEMICOLON>
+    // | <IDENTIFIER> (ExpressionL() <SEMICOLON> | StatementAssign()) // Changed line
+    | <THIS> ExpressionL() <SEMICOLON>
+    | <NEW> ExpressionNew() <SEMICOLON>
+    | <NOT> Expression() ExpressionL() <SEMICOLON>
+    | <LPAR> Expression() <RPAR> ExpressionL() <SEMICOLON>
+}
+
+void AuxiliarExpressionLStatement() : {} {
+    (<LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression() <SEMICOLON>)) // Changed Line
+    | ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL() <SEMICOLON>)
+    | <DOT> ExpressionLDot() <SEMICOLON>
+    | (<ASSIGN> Expression() <SEMICOLON>)
+    // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+    | {}
+}
+
+// void StatementAssign() : {} {
+//     (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
+// }
 
 void Expression() : {} {
     <INTEGER_LITERAL> ExpressionL()
