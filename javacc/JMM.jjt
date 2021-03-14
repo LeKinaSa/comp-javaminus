@@ -112,7 +112,7 @@ void Statement() : {} {
 }
 
 void AuxiliarExpressionStatement() : {} {
-    (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
+    (<IDENTIFIER> AuxiliarExpressionLStatement() <SEMICOLON>) // Changed line
     | <INTEGER_LITERAL> ExpressionL() <SEMICOLON>
     | <TRUE> ExpressionL() <SEMICOLON>
     | <FALSE> ExpressionL() <SEMICOLON>
@@ -124,10 +124,10 @@ void AuxiliarExpressionStatement() : {} {
 }
 
 void AuxiliarExpressionLStatement() : {} {
-    (<LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression() <SEMICOLON>)) // Changed Line
-    | ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL() <SEMICOLON>)
-    | <DOT> ExpressionLDot() <SEMICOLON>
-    | (<ASSIGN> Expression() <SEMICOLON>)
+    <LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression()) // Changed Line
+    | (<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()
+    | <DOT> ExpressionLDot()
+    | <ASSIGN> Expression()
     // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
     | {}
 }
