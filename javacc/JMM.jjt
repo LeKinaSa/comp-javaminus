@@ -1,5 +1,5 @@
 options {
-    LOOKAHEAD = 2;
+    LOOKAHEAD = 1;
     FORCE_LA_CHECK = true;
 }
 
@@ -90,9 +90,9 @@ void MethodDeclaration() : {} {
 
 void MethodDeclarationAux() : {} {
     (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
+    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
-    (VarDeclaration())* (Statement())* <RBR>)
+    (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
 
 void Type() : {} {
