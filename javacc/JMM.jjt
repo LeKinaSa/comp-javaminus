@@ -106,9 +106,29 @@ void Statement() : {} {
     AuxiliarExpressionStatement()
     | (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
-    | (<WHILE> <LPAR> Expression() <RPAR> Statement())
+    | (
+    try {
+        <WHILE> <LPAR> Expression() <RPAR>
+    }
+    catch (ParseException ex) {
+        System.out.println(ex.toString());
+        skipToStatement();
+    } Statement())
     // | (Expression() <SEMICOLON>)
     // | (<IDENTIFIER> StatementAssign())
+}
+
+JAVACODE
+void skipToStatement() {
+    Token t;
+
+    /*  Ignores tokens until a LBR token is found (but doesn't consume it) or until the last RPAR token is found
+        in a chain of RPAR tokens */
+
+    do {
+        t = getNextToken();
+    }
+    while (getToken(1).kind != LBR && (t.kind != RPAR || getToken(1).kind == RPAR));
 }
 
 void AuxiliarExpressionStatement() : {} {
