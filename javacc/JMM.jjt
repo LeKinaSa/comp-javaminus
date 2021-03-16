@@ -82,15 +82,11 @@ void VarDeclaration() : {} {
 
 void MethodDeclaration() : {} {
     <PUBLIC> MethodDeclarationAux()
-    // (<PUBLIC> Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    // <RPAR> <LBR> (VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
-    // | (<PUBLIC> <STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
-    // (VarDeclaration())* (Statement())* <RBR>)
 }
 
 void MethodDeclarationAux() : {} {
     (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
+    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> ExpressionWithIdentifier() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
     (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
@@ -103,7 +99,8 @@ void Type() : {} {
 
 void Statement() : {} {
     // (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
-    AuxiliarExpressionStatement()
+    <IDENTIFIER> IdentifierExpression() <SEMICOLON>
+    | Expression() <SEMICOLON>
     | (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
     | (
@@ -131,18 +128,26 @@ void skipToStatement() {
     while (getToken(1).kind != LBR && (t.kind != RPAR || getToken(1).kind == RPAR));
 }
 
-void AuxiliarExpressionStatement() : {} {
-    (<IDENTIFIER> AuxiliarExpressionLStatement() <SEMICOLON>) // Changed line
-    | <INTEGER_LITERAL> ExpressionL() <SEMICOLON>
-    | <TRUE> ExpressionL() <SEMICOLON>
-    | <FALSE> ExpressionL() <SEMICOLON>
-    // | <IDENTIFIER> (ExpressionL() <SEMICOLON> | StatementAssign()) // Changed line
-    | <THIS> ExpressionL() <SEMICOLON>
-    | <NEW> ExpressionNew() <SEMICOLON>
-    | <NOT> Expression() ExpressionL() <SEMICOLON>
-    | <LPAR> Expression() <RPAR> ExpressionL() <SEMICOLON>
+void IdentifierExpression() : {} {
+    <ASSIGN> ExpressionWithIdentifier()
+    | <LSQBR> ExpressionWithIdentifier() <RSQBR> (<ASSIGN> ExpressionWithIdentifier())?
+    | ExpressionLRest()
 }
 
+// Can be deleted
+void AuxiliarExpressionStatement() : {} {
+    (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
+    | <INTEGER_LITERAL> ExpressionL()
+    | <TRUE> ExpressionL()
+    | <FALSE> ExpressionL()
+    // | <IDENTIFIER> (ExpressionL() <SEMICOLON> | StatementAssign()) // Changed line
+    | <THIS> ExpressionL()
+    | <NEW> ExpressionNew()
+    | <NOT> Expression() ExpressionL()
+    | <LPAR> Expression() <RPAR> ExpressionL()
+}
+
+// Can be deleted
 void AuxiliarExpressionLStatement() : {} {
     <LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression()) // Changed Line
     | (<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()
@@ -156,30 +161,38 @@ void AuxiliarExpressionLStatement() : {} {
 //     (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
 // }
 
+void ExpressionWithIdentifier() : {} {
+    <IDENTIFIER> ExpressionL()
+    | Expression()
+}
+
 void Expression() : {} {
     <INTEGER_LITERAL> ExpressionL()
     | <TRUE> ExpressionL()
     | <FALSE> ExpressionL()
-    | <IDENTIFIER> ExpressionL()
     | <THIS> ExpressionL()
     | (<NEW> ExpressionNew())
-    | (<NOT> Expression() ExpressionL())
-    | (<LPAR> Expression() <RPAR> ExpressionL())
+    | (<NOT> ExpressionWithIdentifier() ExpressionL())
+    | (<LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL())
 }
 
 void ExpressionNew() : {} {
-    (<INT> <LSQBR> Expression() <RSQBR> ExpressionL())
+    (<INT> <LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
     | (<IDENTIFIER> <LPAR> <RPAR> ExpressionL())
 }
 
 void ExpressionL() : {} {
-    ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL())
-    | (<LSQBR> Expression() <RSQBR> ExpressionL())
+    (<LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
+    | ExpressionLRest()
+}
+
+void ExpressionLRest() : {} {
+    ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) ExpressionWithIdentifier() ExpressionL())
     | (<DOT> ExpressionLDot())
     | {}
 }
 
 void ExpressionLDot() : {} {
-    (<IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR> ExpressionL())
+    (<IDENTIFIER> <LPAR> (ExpressionWithIdentifier() (<COMMA> ExpressionWithIdentifier())*)? <RPAR> ExpressionL())
     | (<LENGTH> ExpressionL())
 }
