@@ -57,7 +57,7 @@ TOKEN : {
     | <SEMICOLON: ";">
     | <AND: "&&">
     | <LT: "<">
-    | <SUM: "+">
+    | <ADD: "+">
     | <SUB: "-">
     | <MUL: "*">
     | <DIV: "/">
@@ -150,7 +150,7 @@ void AuxiliarExpressionStatement() : {} {
 // Can be deleted
 void AuxiliarExpressionLStatement() : {} {
     <LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression()) // Changed Line
-    | (<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()
+    | (<AND> | <LT> | <ADD> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()
     | <DOT> ExpressionLDot()
     | <ASSIGN> Expression()
     // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
@@ -162,18 +162,13 @@ void AuxiliarExpressionLStatement() : {} {
 // }
 
 void ExpressionWithIdentifier() : {} {
-    <IDENTIFIER> ExpressionL()
-    | Expression()
+    //<IDENTIFIER> ExpressionL()
+    Expression()
 }
 
 void Expression() : {} {
-    <INTEGER_LITERAL> ExpressionL()
-    | <TRUE> ExpressionL()
-    | <FALSE> ExpressionL()
-    | <THIS> ExpressionL()
-    | (<NEW> ExpressionNew())
-    | (<NOT> ExpressionWithIdentifier() ExpressionL())
-    | (<LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL())
+    ExpressionAnd()
+    //| (<LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL())
 }
 
 void ExpressionNew() : {} {
@@ -181,15 +176,47 @@ void ExpressionNew() : {} {
     | (<IDENTIFIER> <LPAR> <RPAR> ExpressionL())
 }
 
-void ExpressionL() : {} {
+void ExpressionL() #void : {} {
     (<LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
     | ExpressionLRest()
 }
 
-void ExpressionLRest() : {} {
-    ((<AND> | <LT> | <SUM> | <SUB> | <MUL> | <DIV>) ExpressionWithIdentifier() ExpressionL())
-    | (<DOT> ExpressionLDot())
+void ExpressionLRest() #void : {} {
+    //((<AND> | <LT> | <ADD> #Add | <SUB> | <MUL> #Mul | <DIV>) ExpressionWithIdentifier() ExpressionL())
+    (<DOT> ExpressionLDot())
     | {}
+}
+
+void ExpressionAnd() #void : {} {
+    ExpressionLess() (<AND> ExpressionLess() #And(2))*
+}
+
+void ExpressionLess() #void : {} {
+    ExpressionAddSub() (<LT> ExpressionAddSub() #LessThan(2))*
+}
+
+void ExpressionAddSub() #void : {} {
+    ExpressionMulDiv() ((<ADD> ExpressionMulDiv() #Add(2) | <SUB> ExpressionMulDiv() #Sub(2)))*
+}
+
+void ExpressionMulDiv() #void : {} {
+    ExpressionNot() ((<MUL> ExpressionNot() #Mul(2) | <DIV> ExpressionNot() #Div(2)))*
+}
+
+void ExpressionNot() #void : {} {
+    <NOT> ExpressionNot() #Not(1)
+    | Primary()
+}
+
+void Primary() #void : {} {
+    <LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL()
+    | <INTEGER_LITERAL> #Int ExpressionL()
+    | <IDENTIFIER> #Var ExpressionL()
+    | <THIS> #This ExpressionL()
+    | <NEW> #New ExpressionNew()
+    | <TRUE> #True ExpressionL()
+    | <FALSE> #False ExpressionL()
+    //| <NOT> #Not ExpressionWithIdentifier() ExpressionL()
 }
 
 void ExpressionLDot() : {} {
