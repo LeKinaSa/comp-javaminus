@@ -15,4 +15,16 @@ public class ExampleTest {
         String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
 		TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
 	}
+
+	@Test
+    public void testSimple() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/Simple.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
+
+    @Test
+    public void testQuickSort() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/QuickSort.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
 }
