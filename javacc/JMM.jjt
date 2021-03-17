@@ -20,7 +20,14 @@ public class JMM {
 PARSER_END(JMM)
 
 SKIP : {
-    " " | "\r" | "\t" | "\n"
+    " " | "\r" | "\t" | "\n" | < "//" (~["\r", "\n"])* >
+    | < "/*" > : ML_COMMENT_STATE
+}
+
+<ML_COMMENT_STATE> SKIP :
+{
+  < "*/" > : DEFAULT
+| < ~[] >   
 }
 
 TOKEN : {
