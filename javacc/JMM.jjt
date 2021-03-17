@@ -93,7 +93,7 @@ void MethodDeclaration() : {} {
 
 void MethodDeclarationAux() : {} {
     (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> ExpressionWithIdentifier() <SEMICOLON> <RBR>)
+    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
     (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
@@ -105,10 +105,7 @@ void Type() : {} {
 }
 
 void Statement() : {} {
-    // (<IDENTIFIER> <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
-    <IDENTIFIER> IdentifierExpression() <SEMICOLON>
-    | Expression() <SEMICOLON>
-    | (<LBR> (Statement())* <RBR>)
+    (<LBR> (Statement())* <RBR>)
     | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
     | (
     try {
@@ -118,6 +115,8 @@ void Statement() : {} {
         System.out.println(ex.toString());
         skipToStatement();
     } Statement())
+    | LOOKAHEAD(2) Assignment()
+    | LOOKAHEAD(2) Expression() <SEMICOLON>
     // | (Expression() <SEMICOLON>)
     // | (<IDENTIFIER> StatementAssign())
 }
@@ -135,12 +134,11 @@ void skipToStatement() {
     while (getToken(1).kind != LBR && (t.kind != RPAR || getToken(1).kind == RPAR));
 }
 
-void IdentifierExpression() : {} {
-    <ASSIGN> ExpressionWithIdentifier()
-    | <LSQBR> ExpressionWithIdentifier() <RSQBR> (<ASSIGN> ExpressionWithIdentifier())?
-    | ExpressionLRest()
+void Assignment() : {} {
+    <IDENTIFIER> (<ASSIGN> Expression() | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression()) <SEMICOLON>
 }
 
+/*
 // Can be deleted
 void AuxiliarExpressionStatement() : {} {
     (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
@@ -163,26 +161,18 @@ void AuxiliarExpressionLStatement() : {} {
     // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
     | {}
 }
+*/
 
 // void StatementAssign() : {} {
 //     (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
 // }
-
-void ExpressionWithIdentifier() : {} {
-    //<IDENTIFIER> ExpressionL()
-    Expression()
-}
 
 void Expression() : {} {
     ExpressionAnd()
     //| (<LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL())
 }
 
-void ExpressionNew() : {} {
-    (<INT> <LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
-    | (<IDENTIFIER> <LPAR> <RPAR> ExpressionL())
-}
-
+/*
 void ExpressionL() #void : {} {
     (<LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
     | ExpressionLRest()
@@ -190,9 +180,9 @@ void ExpressionL() #void : {} {
 
 void ExpressionLRest() #void : {} {
     //((<AND> | <LT> | <ADD> #Add | <SUB> | <MUL> #Mul | <DIV>) ExpressionWithIdentifier() ExpressionL())
-    (<DOT> ExpressionLDot())
-    | {}
+    {}
 }
+*/
 
 void ExpressionAnd() #void : {} {
     ExpressionLess() (<AND> ExpressionLess() #And(2))*
@@ -216,17 +206,28 @@ void ExpressionNot() #void : {} {
 }
 
 void Primary() #void : {} {
-    <LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL()
-    | <INTEGER_LITERAL> #Int ExpressionL()
-    | <IDENTIFIER> #Var ExpressionL()
-    | <THIS> #This ExpressionL()
-    | <NEW> #New ExpressionNew()
-    | <TRUE> #True ExpressionL()
-    | <FALSE> #False ExpressionL()
-    //| <NOT> #Not ExpressionWithIdentifier() ExpressionL()
+    <LPAR> Expression() <RPAR> PrimaryL()
+    | <INTEGER_LITERAL> #Int PrimaryL()
+    | <IDENTIFIER> #Var PrimaryL()
+    | <THIS> #This PrimaryL()
+    | <NEW> #New ExpressionNew() PrimaryL()
+    | <TRUE> #True PrimaryL()
+    | <FALSE> #False PrimaryL()
+    //| <NOT> #Not Expression() ExpressionL()
 }
 
-void ExpressionLDot() : {} {
-    (<IDENTIFIER> <LPAR> (ExpressionWithIdentifier() (<COMMA> ExpressionWithIdentifier())*)? <RPAR> ExpressionL())
-    | (<LENGTH> ExpressionL())
+void PrimaryL() #void : {} {
+    <LSQBR> Expression() <RSQBR> PrimaryL()
+    | <DOT> #Dot ExpressionDot() PrimaryL()
+    | {}
+}
+
+void ExpressionNew() : {} {
+    <INT> <LSQBR> Expression() <RSQBR>
+    | <IDENTIFIER> <LPAR> <RPAR>
+}
+
+void ExpressionDot() : {} {
+    <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>
+    | <LENGTH>
 }
