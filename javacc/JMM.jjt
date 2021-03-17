@@ -117,8 +117,6 @@ void Statement() : {} {
     } Statement())
     | LOOKAHEAD(2) Assignment()
     | LOOKAHEAD(2) Expression() <SEMICOLON>
-    // | (Expression() <SEMICOLON>)
-    // | (<IDENTIFIER> StatementAssign())
 }
 
 JAVACODE
@@ -138,51 +136,9 @@ void Assignment() : {} {
     <IDENTIFIER> (<ASSIGN> Expression() | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression()) <SEMICOLON>
 }
 
-/*
-// Can be deleted
-void AuxiliarExpressionStatement() : {} {
-    (<IDENTIFIER> AuxiliarExpressionLStatement()) // Changed line
-    | <INTEGER_LITERAL> ExpressionL()
-    | <TRUE> ExpressionL()
-    | <FALSE> ExpressionL()
-    // | <IDENTIFIER> (ExpressionL() <SEMICOLON> | StatementAssign()) // Changed line
-    | <THIS> ExpressionL()
-    | <NEW> ExpressionNew()
-    | <NOT> Expression() ExpressionL()
-    | <LPAR> Expression() <RPAR> ExpressionL()
-}
-
-// Can be deleted
-void AuxiliarExpressionLStatement() : {} {
-    <LSQBR> Expression() <RSQBR> (ExpressionL() <SEMICOLON> | <ASSIGN> Expression()) // Changed Line
-    | (<AND> | <LT> | <ADD> | <SUB> | <MUL> | <DIV>) Expression() ExpressionL()
-    | <DOT> ExpressionLDot()
-    | <ASSIGN> Expression()
-    // | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
-    | {}
-}
-*/
-
-// void StatementAssign() : {} {
-//     (<ASSIGN> Expression() <SEMICOLON> | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression() <SEMICOLON>)
-// }
-
 void Expression() : {} {
     ExpressionAnd()
-    //| (<LPAR> ExpressionWithIdentifier() <RPAR> ExpressionL())
 }
-
-/*
-void ExpressionL() #void : {} {
-    (<LSQBR> ExpressionWithIdentifier() <RSQBR> ExpressionL())
-    | ExpressionLRest()
-}
-
-void ExpressionLRest() #void : {} {
-    //((<AND> | <LT> | <ADD> #Add | <SUB> | <MUL> #Mul | <DIV>) ExpressionWithIdentifier() ExpressionL())
-    {}
-}
-*/
 
 void ExpressionAnd() #void : {} {
     ExpressionLess() (<AND> ExpressionLess() #And(2))*
@@ -213,7 +169,6 @@ void Primary() #void : {} {
     | <NEW> #New ExpressionNew() PrimaryL()
     | <TRUE> #True PrimaryL()
     | <FALSE> #False PrimaryL()
-    //| <NOT> #Not Expression() ExpressionL()
 }
 
 void PrimaryL() #void : {} {
