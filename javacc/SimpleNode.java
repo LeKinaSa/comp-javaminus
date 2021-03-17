@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.Map;
+import java.util.HashMap;
 
 public
 class SimpleNode implements Node, JmmNode {
@@ -18,8 +20,7 @@ class SimpleNode implements Node, JmmNode {
     protected JMM parser;
 
     // added
-    public int val;
-    public Operator op = null;
+    public Map<String, String> attributeMap = new HashMap<>();
 
     public SimpleNode(int i) {
         id = i;
@@ -36,19 +37,19 @@ class SimpleNode implements Node, JmmNode {
     }
 
     public List<String> getAttributes() {
-        throw new RuntimeException("Not implemented yet");
+        return new ArrayList<>(attributeMap.keySet());
     }
 
     public void put(String attribute, String value) {
-        throw new RuntimeException("Not implemented yet");
+        attributeMap.put(attribute, value);
     }
 
     public String get(String attribute) {
-        throw new RuntimeException("Not implemented yet");
+        return attributeMap.get(attribute);
     }
 
     public List<JmmNode> getChildren() {
-        return (children == null) ? new ArrayList<>() : Arrays.asList((JmmNode[])children);
+        return JmmNode.convertChildren(children);
     }
 
     public int getNumChildren() {
