@@ -161,9 +161,9 @@ void ExpressionNot() #void : {} {
     | Primary()
 }
 
-void Primary() #void : {} {
+void Primary() #void : { Token t; } {
     <LPAR> Expression() <RPAR> PrimaryL()
-    | <INTEGER_LITERAL> #Int PrimaryL()
+    | t = <INTEGER_LITERAL> { jjtThis.put("value", t.image); } #Int PrimaryL()
     | <IDENTIFIER> #Var PrimaryL()
     | <THIS> #This PrimaryL()
     | <NEW> #New ExpressionNew() PrimaryL()
