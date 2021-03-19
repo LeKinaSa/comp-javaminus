@@ -7,7 +7,9 @@ PARSER_BEGIN(JMM)
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import pt.up.fe.comp.jmm.report.*;
+import pt.up.fe.comp.jmm.report.Report;
+import pt.up.fe.comp.jmm.report.ReportType;
+import pt.up.fe.comp.jmm.report.Stage;
 
 public class JMM {
     public static void main(String[] args) throws ParseException, FileNotFoundException {
@@ -27,8 +29,8 @@ SKIP : {
 
 <ML_COMMENT_STATE> SKIP :
 {
-  < "*/" > : DEFAULT
-| < ~[] >   
+    < "*/" > : DEFAULT
+    | < ~[] >
 }
 
 TOKEN : {

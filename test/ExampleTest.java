@@ -13,10 +13,10 @@ public class ExampleTest {
     @Test
     public void testHelloWorld() {
         String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
-		TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
-	}
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
 
-	@Test
+    @Test
     public void testSimple() {
         String jmmCode = SpecsIo.getResource("fixtures/public/Simple.jmm");
         TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
@@ -29,18 +29,44 @@ public class ExampleTest {
     }
 
     @Test
-    public void testCompleteWhileTest() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/fail/syntactical/CompleteWhileTest.jmm");
-        // System.out.println(TestUtils.getNumErrors(TestUtils.parse(jmmCode).getReports()));
-        TestUtils.mustFail(TestUtils.parse(jmmCode).getReports());
-
-        //assertEquals(11, TestUtils.getNumErrors(TestUtils.parse(jmmCode).getReports()));
+    public void testLazySort() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/Lazysort.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
     }
 
     @Test
-    public void testNestedLoop() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/fail/syntactical/NestedLoop.jmm");
+    public void testFindMaximum() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/FindMaximum.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
+
+    @Test
+    public void testLife() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/Life.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
+
+    @Test
+    public void testMonteCarloPi() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/MonteCarloPi.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
+
+    @Test
+    public void testTicTacToe() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/TicTacToe.jmm");
+        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+    }
+
+    @Test
+    public void testWhile() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/fail/syntactical/CompleteWhileTest.jmm");
         TestUtils.mustFail(TestUtils.parse(jmmCode).getReports());
-        // System.out.println(TestUtils.getNumErrors(TestUtils.parse(jmmCode).getReports()));
+    }
+
+    @Test
+    public void testJson() {
+        String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
+        System.out.println(TestUtils.parse(jmmCode).toJson());
     }
 }
