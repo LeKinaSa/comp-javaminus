@@ -115,8 +115,8 @@ void Statement() : {} {
         <WHILE> <LPAR> Expression() <RPAR>
     }
     catch (ParseException ex) {
-        Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.endLine, ex.toString()));
-        System.out.println(ex.toString());
+        Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.endLine, ex.getMessage()));
+        System.out.println(ex.getMessage());
         skipToStatement();
     } Statement())
     | LOOKAHEAD(2) Assignment()

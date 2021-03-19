@@ -6,6 +6,9 @@ import pt.up.fe.comp.jmm.report.Report;
 import java.util.Arrays;
 import java.util.ArrayList;
 import java.io.StringReader;
+import pt.up.fe.comp.jmm.report.Report;
+import pt.up.fe.comp.jmm.report.ReportType;
+import pt.up.fe.comp.jmm.report.Stage;
 
 public class Main implements JmmParser {
 	public JmmParserResult parse(String jmmCode) {
@@ -18,7 +21,8 @@ public class Main implements JmmParser {
     		System.out.println(root.toJson());
     		return new JmmParserResult(root, Reports.getReports());
 		} catch(ParseException e) {
-			throw new RuntimeException("Error while parsing", e);
+			Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, 0, "Parser error!"));
+			return new JmmParserResult(null, Reports.getReports());
 		}
 	}
 
