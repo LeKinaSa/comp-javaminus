@@ -7,6 +7,7 @@ PARSER_BEGIN(JMM)
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import pt.up.fe.comp.jmm.report.*;
 
 public class JMM {
     public static void main(String[] args) throws ParseException, FileNotFoundException {
@@ -112,6 +113,7 @@ void Statement() : {} {
         <WHILE> <LPAR> Expression() <RPAR>
     }
     catch (ParseException ex) {
+        Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.endLine, ex.toString()));
         System.out.println(ex.toString());
         skipToStatement();
     } Statement())

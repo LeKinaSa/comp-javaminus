@@ -10,12 +10,13 @@ import java.io.StringReader;
 public class Main implements JmmParser {
 	public JmmParserResult parse(String jmmCode) {
 		try {
+			Reports.clear();
 			JMM jmm = new JMM(new StringReader(jmmCode));
     		SimpleNode root = jmm.Program(); // returns reference to root node
 
-    		root.dump(""); // prints the tree on the screen
-    	
-    		return new JmmParserResult(root, new ArrayList<Report>());
+    		// root.dump(""); // prints the tree on the screen
+    		System.out.println(root.toJson());
+    		return new JmmParserResult(root, Reports.getReports());
 		} catch(ParseException e) {
 			throw new RuntimeException("Error while parsing", e);
 		}
