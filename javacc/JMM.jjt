@@ -24,12 +24,12 @@ PARSER_END(JMM)
 
 SKIP : {
     " " | "\r" | "\t" | "\n" | < "//" (~["\r", "\n"])* >
-    | < "/*" > : ML_COMMENT_STATE
+    | "/*" : ML_COMMENT_STATE
 }
 
 <ML_COMMENT_STATE> SKIP :
 {
-    < "*/" > : DEFAULT
+    "*/" : DEFAULT
     | < ~[] >
 }
 
@@ -94,7 +94,7 @@ void MethodDeclaration() : {} {
     <PUBLIC> MethodDeclarationAux()
 }
 
-void MethodDeclarationAux() : {} {
+void MethodDeclarationAux() #void : {} {
     (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
     <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
@@ -168,7 +168,7 @@ void ExpressionNot() #void : {} {
 void Primary() #void : { Token t; } {
     <LPAR> Expression() <RPAR> PrimaryL()
     | t = <INTEGER_LITERAL> { jjtThis.put("value", t.image); } #Int PrimaryL()
-    | <IDENTIFIER> #Var PrimaryL()
+    | t = <IDENTIFIER> { jjtThis.put("name", t.image); } #Var PrimaryL()
     | <THIS> #This PrimaryL()
     | <NEW> #New ExpressionNew() PrimaryL()
     | <TRUE> #True PrimaryL()
@@ -177,7 +177,7 @@ void Primary() #void : { Token t; } {
 
 void PrimaryL() #void : {} {
     <LSQBR> Expression() <RSQBR> PrimaryL()
-    | <DOT> #Dot ExpressionDot() PrimaryL()
+    | <DOT> ExpressionDot() #Dot(2) PrimaryL()
     | {}
 }
 
@@ -186,7 +186,7 @@ void ExpressionNew() : {} {
     | <IDENTIFIER> <LPAR> <RPAR>
 }
 
-void ExpressionDot() : {} {
-    <IDENTIFIER> <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>
-    | <LENGTH>
+void ExpressionDot() #void : {} {
+    <IDENTIFIER> #Func <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>
+    | <LENGTH> #Length
 }
