@@ -75,36 +75,40 @@ TOKEN : {
 }
 
 SimpleNode Program() : {} {
-    ImportDeclaration() ClassDeclaration() <EOF> { return jjtThis; }
+    (ImportDeclaration())* ClassDeclaration() <EOF> { return jjtThis; }
 }
 
-void ImportDeclaration() : {} {
-    (<IMPORT> <IDENTIFIER> (<DOT> <IDENTIFIER>)* <SEMICOLON>)*
+void ImportDeclaration() #Import : {Token t;} {
+    <IMPORT> t = <IDENTIFIER> { jjtThis.put("name", t.image); } (<DOT> t = <IDENTIFIER> { jjtThis.put("name", t.image); })* <SEMICOLON>
 }
 
-void ClassDeclaration() : {} {
-    <CLASS> <IDENTIFIER> (<EXTENDS> <IDENTIFIER>)? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
+void ClassDeclaration() #Class : {Token t;} {
+    <CLASS> t = <IDENTIFIER> { jjtThis.put("name", t.image); }(<EXTENDS> t = <IDENTIFIER> { jjtThis.put("extends", t.image); })? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
 }
 
-void VarDeclaration() : {} {
-    Type() <IDENTIFIER> <SEMICOLON>
+void VarDeclaration() #Variable: {Token t;} {
+    Type() t = <IDENTIFIER> { jjtThis.put("name", t.image); }<SEMICOLON>
 }
 
-void MethodDeclaration() : {} {
+void MethodDeclaration() #void: {} {
     <PUBLIC> MethodDeclarationAux()
 }
 
-void MethodDeclarationAux() #void : {} {
-    (Type() <IDENTIFIER> <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
+void MethodDeclarationAux() #Method: {Token t;} {
+    (Type() <IDENTIFIER>  <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
     <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
     (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
 
-void Type() : {} {
-    (<INT> (<LSQBR> <RSQBR>)?)
-    | <BOOLEAN>
-    | <IDENTIFIER>
+void Type() : {Token t;} {
+    (t = <INT> (<LSQBR> t = <RSQBR>)? {
+        if(t.image == "]")
+            jjtThis.put("type", "int[]");
+        else jjtThis.put("type", t.image); }
+    )
+    | t = <BOOLEAN> { jjtThis.put("type", t.image); }
+    | t = <IDENTIFIER> { jjtThis.put("type", t.image); }
 }
 
 void Statement() : {} {

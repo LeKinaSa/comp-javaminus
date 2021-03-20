@@ -31,17 +31,21 @@ class SimpleNode implements Node, JmmNode {
         parser = p;
     }
 
-
     public String getKind() {
         return toString();
     }
 
     public List<String> getAttributes() {
+        // attributeMap.forEach((key, value) -> System.out.println(key + ":" + value));
         return new ArrayList<>(attributeMap.keySet());
     }
 
     public void put(String attribute, String value) {
-        attributeMap.put(attribute, value);
+        if(attributeMap.containsKey(attribute)) {
+            String finalValue = attributeMap.get(attribute) + "." + value;
+            attributeMap.put(attribute, finalValue);
+        } else
+            attributeMap.put(attribute, value);
     }
 
     public String get(String attribute) {
