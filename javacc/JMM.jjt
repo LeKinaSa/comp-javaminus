@@ -94,7 +94,7 @@ void MethodDeclaration() #void: {} {
     <PUBLIC> MethodDeclarationAux()
 }
 
-void MethodDeclarationAux() #Method: {Token t;} {
+void MethodDeclarationAux() #Method: {} {
     (Type() <IDENTIFIER>  <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
     <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
     | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
