@@ -123,7 +123,7 @@ void Statement() : {} {
         System.out.println(ex.getMessage());
         skipToStatement();
     } Statement())
-    | LOOKAHEAD(2) Assignment()
+    | LOOKAHEAD(2) Assignment() <SEMICOLON>
     | LOOKAHEAD(2) Expression() <SEMICOLON>
 }
 
@@ -141,7 +141,7 @@ void skipToStatement() {
 }
 
 void Assignment() : {} {
-    <IDENTIFIER> (<ASSIGN> Expression() | <LSQBR> Expression() <RSQBR> <ASSIGN> Expression()) <SEMICOLON>
+    <IDENTIFIER> (<LSQBR> Expression() <RSQBR>)? <ASSIGN> Expression()
 }
 
 void Expression() : {} {
