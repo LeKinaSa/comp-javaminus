@@ -80,11 +80,11 @@ SimpleNode Program() : {} {
     ImportDeclaration() ClassDeclaration() <EOF> { return jjtThis; }
 }
 
-void ImportDeclaration() #Imports : {Token t;} {
+void ImportDeclaration() #Imports : { Token t; } {
     (Import())*
 }
 
-void Import() #Import : {Token t; String importName = "";} {
+void Import() #Import : { Token t; String importName = ""; } {
     <IMPORT> t = <IDENTIFIER> {
         importName += t.image;
     } (<DOT> t = <IDENTIFIER> {
@@ -95,11 +95,13 @@ void Import() #Import : {Token t; String importName = "";} {
     }
 }
 
-void ClassDeclaration() #Class : {Token t;} {
-    <CLASS> t = <IDENTIFIER> { jjtThis.put("name", t.image); }(<EXTENDS> t = <IDENTIFIER> { jjtThis.put("extends", t.image); })? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
+void ClassDeclaration() #Class : { Token t; } {
+    <CLASS> t = <IDENTIFIER> { jjtThis.put("name", t.image); }
+    (<EXTENDS> t = <IDENTIFIER> { jjtThis.put("extends", t.image); })?
+    <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
 }
 
-void VarDeclaration() #VarDecl : {Token t; String varType;} {
+void VarDeclaration() #VarDecl : { Token t; String varType; } {
     varType = Type() t = <IDENTIFIER> <SEMICOLON>
     {
         jjtThis.put("type", varType);
@@ -115,19 +117,21 @@ void MethodDeclarationAux() #Method : { Token t; String returnType; } {
     (returnType = Type() t = <IDENTIFIER> {
         jjtThis.put("returnType", returnType);
         jjtThis.put("name", t.image);
-    } <LPAR> MethodArguments() <RPAR> <LBR> MethodBody() MethodReturn() <RBR>)
+    } <LPAR> MethodParameters() <RPAR> <LBR> MethodBody() MethodReturn() <RBR>)
     | (<STATIC> t = <VOID> { returnType = t.image; } t = <MAIN> {
         jjtThis.put("returnType", returnType);
         jjtThis.put("name", t.image);
-    } <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
+    } <LPAR> <STRING> <LSQBR> <RSQBR> t = <IDENTIFIER> {
+        jjtThis.put("cmdArgsName", t.image);
+    } <RPAR> <LBR>
     MethodBody() <RBR>)
 }
 
-void MethodArguments() #Args : {} {
-    (MethodArgument() (<COMMA> MethodArgument())*)?
+void MethodParameters() #Params : {} {
+    (MethodParameter() (<COMMA> MethodParameter())*)?
 }
 
-void MethodArgument() #Arg : { Token t; String type; } {
+void MethodParameter() #Param : { Token t; String type; } {
     type = Type() t = <IDENTIFIER> {
         jjtThis.put("type", type);
         jjtThis.put("name", t.image);
@@ -150,31 +154,37 @@ String Type() #void : {Token t;} {
 
 void Statement() : {} {
     (<LBR> (Statement())* <RBR>)
-    | (<IF> <LPAR> Expression() <RPAR> Statement() <ELSE> Statement())
-    | (
+    | IfStatement()
+    | WhileStatement()
+    //| LOOKAHEAD(2) Assignment() <SEMICOLON>
+    | Expression() <SEMICOLON>
+}
+
+void IfStatement() #If : {} {
+    <IF> <LPAR> Expression() #Condition <RPAR> Statement() #Then <ELSE> Statement() #Else
+}
+
+void WhileStatement() #While : {} {
     try {
-        <WHILE> <LPAR> Expression() <RPAR>
+        <WHILE> <LPAR> Expression() #Condition <RPAR>
     }
     catch (ParseException ex) {
         Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.endLine, ex.getMessage()));
         System.out.println(ex.getMessage());
         skipToStatement();
-    } Statement())
-    | LOOKAHEAD(2) Assignment() <SEMICOLON>
-    | LOOKAHEAD(2) Expression() <SEMICOLON>
+    } Statement() #Body
 }
 
 JAVACODE
 void skipToStatement() {
-    Token t;
+    Token t = null;
 
     /*  Ignores tokens until a LBR token is found (but doesn't consume it) or until the last RPAR token is found
         in a chain of RPAR tokens */
 
-    do {
+    while (getToken(1).kind != LBR && (t == null || t.kind != RPAR || getToken(1).kind == RPAR)) {
         t = getNextToken();
     }
-    while (getToken(1).kind != LBR && (t.kind != RPAR || getToken(1).kind == RPAR));
 }
 
 void Assignment() : {} {
@@ -182,7 +192,11 @@ void Assignment() : {} {
 }
 
 void Expression() : {} {
-    ExpressionAnd()
+    ExpressionAssign()
+}
+
+void ExpressionAssign() #void : {} {
+    ExpressionAnd() (<ASSIGN> ExpressionAnd() #Assign(2))?
 }
 
 void ExpressionAnd() #void : {} {
@@ -227,7 +241,14 @@ void ExpressionNew() : {} {
     | <IDENTIFIER> <LPAR> <RPAR>
 }
 
-void ExpressionDot() #void : {} {
-    <IDENTIFIER> #Func <LPAR> (Expression() (<COMMA> Expression())*)? <RPAR>
-    | <LENGTH> #Length
+void ExpressionDot() #void : {  } {
+    Function() | <LENGTH> #Length
+}
+
+void Function() #Func : { Token t; } {
+    t = <IDENTIFIER> { jjtThis.put("name", t.image); } <LPAR> Arguments() <RPAR>
+}
+
+void Arguments() #Args : {} {
+    (Expression() (<COMMA> Expression())*)?
 }
