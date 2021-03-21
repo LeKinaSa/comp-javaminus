@@ -6,10 +6,11 @@ options {
 PARSER_BEGIN(JMM)
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
+import java.io.FileNotFoundException;import java.util.ArrayList;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
+import java.util.List;
 
 public class JMM {
     public static void main(String[] args) throws ParseException, FileNotFoundException {
@@ -75,11 +76,30 @@ TOKEN : {
 }
 
 SimpleNode Program() : {} {
-    (ImportDeclaration())* ClassDeclaration() <EOF> { return jjtThis; }
+    ImportDeclaration() ClassDeclaration() <EOF> { return jjtThis; }
 }
 
-void ImportDeclaration() #Import : {Token t;} {
-    <IMPORT> t = <IDENTIFIER> { jjtThis.put("name", t.image); } (<DOT> t = <IDENTIFIER> { jjtThis.put("name", t.image); })* <SEMICOLON>
+void ImportDeclaration() #Import : {Token t; String importName; List<String> imports = new ArrayList<String>();} {
+    (importName = Import() {
+        imports.add(importName);
+        String key = "src";
+        int counter = 1;
+        for(String singleImport: imports) {
+            String k = key + counter++;
+            jjtThis.put(k, singleImport);
+        }
+    })*
+}
+
+String Import() #void : {Token t; String importName = "";} {
+    <IMPORT> t = <IDENTIFIER> {
+        importName += t.image;
+    } (<DOT> t = <IDENTIFIER> {
+        importName += "." + t.image;
+    })* <SEMICOLON>
+    {
+        return importName;
+    }
 }
 
 void ClassDeclaration() #Class : {Token t;} {
