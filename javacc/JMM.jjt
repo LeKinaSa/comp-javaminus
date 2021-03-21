@@ -6,7 +6,8 @@ options {
 PARSER_BEGIN(JMM)
 
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;import java.util.ArrayList;
+import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -107,7 +108,11 @@ void ClassDeclaration() #Class : {Token t;} {
 }
 
 void VarDeclaration() #Variable: {Token t; String varType;} {
-    varType = Type() { jjtThis.put("type", varType); } t = <IDENTIFIER> { jjtThis.put("name", t.image); } <SEMICOLON>
+    varType = Type() t = <IDENTIFIER> <SEMICOLON>
+    {
+        jjtThis.put("type", varType);
+        jjtThis.put("name", t.image);
+    }
 }
 
 void MethodDeclaration() #void: {} {
