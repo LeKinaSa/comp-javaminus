@@ -7,6 +7,8 @@ import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.List;
 
+import java.util.Map;
+import java.util.HashMap;
 
 public
 class SimpleNode implements Node, JmmNode {
@@ -18,8 +20,7 @@ class SimpleNode implements Node, JmmNode {
     protected JMM parser;
 
     // added
-    public int val;
-    public Operator op = null;
+    public Map<String, String> attributeMap = new HashMap<>();
 
     public SimpleNode(int i) {
         id = i;
@@ -30,25 +31,24 @@ class SimpleNode implements Node, JmmNode {
         parser = p;
     }
 
-
     public String getKind() {
         return toString();
     }
 
     public List<String> getAttributes() {
-        throw new RuntimeException("Not implemented yet");
+        return new ArrayList<>(attributeMap.keySet());
     }
 
     public void put(String attribute, String value) {
-        throw new RuntimeException("Not implemented yet");
+        attributeMap.put(attribute, value);
     }
 
     public String get(String attribute) {
-        throw new RuntimeException("Not implemented yet");
+        return attributeMap.get(attribute);
     }
 
     public List<JmmNode> getChildren() {
-        return (children == null) ? new ArrayList<>() : Arrays.asList((JmmNode[])children);
+        return JmmNode.convertChildren(children);
     }
 
     public int getNumChildren() {
@@ -104,7 +104,21 @@ class SimpleNode implements Node, JmmNode {
     public String toString() {
         return JMMTreeConstants.jjtNodeName[id];
     }
-    public String toString(String prefix) { return prefix + toString(); }
+
+    public String toString(String prefix) {
+        String str = prefix + toString();
+
+        List<String> attributes = getAttributes();
+
+        if (!attributes.isEmpty()) str += " [";
+        for (int idx = 0; idx < attributes.size(); ++idx) {
+            str += attributes.get(idx) + ": " + get(attributes.get(idx));
+            if (idx < attributes.size() - 1) str += ", ";
+        }
+        if (!attributes.isEmpty()) str += "]";
+
+        return str;
+    }
 
   /* Override this method if you want to customize how the node dumps
      out its children. */
