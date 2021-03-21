@@ -17,11 +17,12 @@ public class Main implements JmmParser {
 			JMM jmm = new JMM(new StringReader(jmmCode));
     		SimpleNode root = jmm.Program(); // returns reference to root node
 
-    		// root.dump(""); // prints the tree on the screen
-    		System.out.println(root.toJson());
+			if (Reports.getReports().isEmpty())
+    			root.dump(""); // prints the tree on the screen
+    		//System.out.println(root.toJson());
     		return new JmmParserResult(root, Reports.getReports());
-		} catch(ParseException e) {
-			Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, 0, "Parser error!"));
+		} catch (ParseException ex) {
+			Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.beginLine, ex.getMessage()));
 			return new JmmParserResult(null, Reports.getReports());
 		}
 	}
