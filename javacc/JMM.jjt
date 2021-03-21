@@ -106,8 +106,8 @@ void ClassDeclaration() #Class : {Token t;} {
     <CLASS> t = <IDENTIFIER> { jjtThis.put("name", t.image); }(<EXTENDS> t = <IDENTIFIER> { jjtThis.put("extends", t.image); })? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
 }
 
-void VarDeclaration() #Variable: {Token t;} {
-    Type() t = <IDENTIFIER> { jjtThis.put("name", t.image); }<SEMICOLON>
+void VarDeclaration() #Variable: {Token t; String varType;} {
+    varType = Type() { jjtThis.put("type", varType); } t = <IDENTIFIER> { jjtThis.put("name", t.image); } <SEMICOLON>
 }
 
 void MethodDeclaration() #void: {} {
@@ -121,14 +121,11 @@ void MethodDeclarationAux() #Method: {} {
     (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
 }
 
-void Type() : {Token t;} {
-    (t = <INT> (<LSQBR> t = <RSQBR>)? {
-        if(t.image == "]")
-            jjtThis.put("type", "int[]");
-        else jjtThis.put("type", t.image); }
-    )
-    | t = <BOOLEAN> { jjtThis.put("type", t.image); }
-    | t = <IDENTIFIER> { jjtThis.put("type", t.image); }
+String Type() #void: {Token t;} {
+    (t = <INT> (<LSQBR> t = <RSQBR>)?) { if(t.image == "]") return "int[]"; else return "int"; }
+    | t = <BOOLEAN> { return t.image; }
+    | t = <IDENTIFIER> { return t.image; }
+
 }
 
 void Statement() : {} {
