@@ -99,7 +99,7 @@ void ClassDeclaration() #Class : {Token t;} {
     <CLASS> t = <IDENTIFIER> { jjtThis.put("name", t.image); }(<EXTENDS> t = <IDENTIFIER> { jjtThis.put("extends", t.image); })? <LBR> (VarDeclaration())* (MethodDeclaration())* <RBR>
 }
 
-void VarDeclaration() #Variable: {Token t; String varType;} {
+void VarDeclaration() #VarDecl : {Token t; String varType;} {
     varType = Type() t = <IDENTIFIER> <SEMICOLON>
     {
         jjtThis.put("type", varType);
@@ -107,22 +107,45 @@ void VarDeclaration() #Variable: {Token t; String varType;} {
     }
 }
 
-void MethodDeclaration() #void: {} {
+void MethodDeclaration() #void : {} {
     <PUBLIC> MethodDeclarationAux()
 }
 
-void MethodDeclarationAux() #Method: {} {
-    (Type() <IDENTIFIER>  <LPAR> (Type() <IDENTIFIER> (<COMMA> Type() <IDENTIFIER>)*)?
-    <RPAR> <LBR> (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RETURN> Expression() <SEMICOLON> <RBR>)
-    | (<STATIC> <VOID> <MAIN> <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
-    (LOOKAHEAD(2) VarDeclaration())* (Statement())* <RBR>)
+void MethodDeclarationAux() #Method : { Token t; String returnType; } {
+    (returnType = Type() t = <IDENTIFIER> {
+        jjtThis.put("returnType", returnType);
+        jjtThis.put("name", t.image);
+    } <LPAR> MethodArguments() <RPAR> <LBR> MethodBody() MethodReturn() <RBR>)
+    | (<STATIC> t = <VOID> { returnType = t.image; } t = <MAIN> {
+        jjtThis.put("returnType", returnType);
+        jjtThis.put("name", t.image);
+    } <LPAR> <STRING> <LSQBR> <RSQBR> <IDENTIFIER> <RPAR> <LBR>
+    MethodBody() <RBR>)
 }
 
-String Type() #void: {Token t;} {
-    (t = <INT> (<LSQBR> t = <RSQBR>)?) { if(t.image == "]") return "int[]"; else return "int"; }
+void MethodArguments() #Args : {} {
+    (MethodArgument() (<COMMA> MethodArgument())*)?
+}
+
+void MethodArgument() #Arg : { Token t; String type; } {
+    type = Type() t = <IDENTIFIER> {
+        jjtThis.put("type", type);
+        jjtThis.put("name", t.image);
+    }
+}
+
+void MethodBody() #Body : {} {
+    (LOOKAHEAD(2) VarDeclaration())* (Statement())*
+}
+
+void MethodReturn() #Return : {} {
+    <RETURN> Expression() <SEMICOLON>
+}
+
+String Type() #void : {Token t;} {
+    t = <INT> (<LSQBR> t = <RSQBR>)? { if (t.image == "]") return "int[]"; else return "int"; }
     | t = <BOOLEAN> { return t.image; }
     | t = <IDENTIFIER> { return t.image; }
-
 }
 
 void Statement() : {} {
@@ -194,7 +217,7 @@ void Primary() #void : { Token t; } {
 }
 
 void PrimaryL() #void : {} {
-    <LSQBR> Expression() <RSQBR> PrimaryL()
+    (<LSQBR> Expression() <RSQBR>) #ArrayAccess(2) PrimaryL()
     | <DOT> ExpressionDot() #Dot(2) PrimaryL()
     | {}
 }
