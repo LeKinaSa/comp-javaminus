@@ -9,7 +9,7 @@ import java.io.StringReader;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.specs.util.SpecsIo;
 
-public class ExampleTest {
+public class SucceedTest {
     @Test
     public void testHelloWorld() {
         String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
@@ -56,17 +56,5 @@ public class ExampleTest {
     public void testTicTacToe() {
         String jmmCode = SpecsIo.getResource("fixtures/public/TicTacToe.jmm");
         TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
-    }
-
-    @Test
-    public void testWhile() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/fail/syntactical/CompleteWhileTest.jmm");
-        TestUtils.mustFail(TestUtils.parse(jmmCode).getReports());
-    }
-
-    @Test
-    public void testJson() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
-        System.out.println(TestUtils.parse(jmmCode).toJson());
     }
 }
