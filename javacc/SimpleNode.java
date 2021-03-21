@@ -104,7 +104,21 @@ class SimpleNode implements Node, JmmNode {
     public String toString() {
         return JMMTreeConstants.jjtNodeName[id];
     }
-    public String toString(String prefix) { return prefix + toString(); }
+
+    public String toString(String prefix) {
+        String str = prefix + toString();
+
+        List<String> attributes = getAttributes();
+
+        if (!attributes.isEmpty()) str += " [";
+        for (int idx = 0; idx < attributes.size(); ++idx) {
+            str += attributes.get(idx) + ": " + get(attributes.get(idx));
+            if (idx < attributes.size() - 1) str += ", ";
+        }
+        if (!attributes.isEmpty()) str += "]";
+
+        return str;
+    }
 
   /* Override this method if you want to customize how the node dumps
      out its children. */
