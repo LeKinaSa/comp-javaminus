@@ -36,16 +36,11 @@ class SimpleNode implements Node, JmmNode {
     }
 
     public List<String> getAttributes() {
-        // attributeMap.forEach((key, value) -> System.out.println(key + ":" + value));
         return new ArrayList<>(attributeMap.keySet());
     }
 
     public void put(String attribute, String value) {
-        if(attributeMap.containsKey(attribute)) {
-            String finalValue = attributeMap.get(attribute) + "." + value;
-            attributeMap.put(attribute, finalValue);
-        } else
-            attributeMap.put(attribute, value);
+        attributeMap.put(attribute, value);
     }
 
     public String get(String attribute) {
