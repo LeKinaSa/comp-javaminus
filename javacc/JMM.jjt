@@ -80,26 +80,18 @@ SimpleNode Program() : {} {
     ImportDeclaration() ClassDeclaration() <EOF> { return jjtThis; }
 }
 
-void ImportDeclaration() #Import : {Token t; String importName; List<String> imports = new ArrayList<String>();} {
-    (importName = Import() {
-        imports.add(importName);
-        String key = "src";
-        int counter = 1;
-        for(String singleImport: imports) {
-            String k = key + counter++;
-            jjtThis.put(k, singleImport);
-        }
-    })*
+void ImportDeclaration() #Imports : {Token t;} {
+    (Import())*
 }
 
-String Import() #void : {Token t; String importName = "";} {
+void Import() #Import : {Token t; String importName = "";} {
     <IMPORT> t = <IDENTIFIER> {
         importName += t.image;
     } (<DOT> t = <IDENTIFIER> {
         importName += "." + t.image;
     })* <SEMICOLON>
     {
-        return importName;
+        jjtThis.put("module", importName);
     }
 }
 
