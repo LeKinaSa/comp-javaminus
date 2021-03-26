@@ -225,7 +225,7 @@ void Primary() #void : { Token t; } {
     | t = <INTEGER_LITERAL> { jjtThis.put("value", t.image); } #Int PrimaryL()
     | t = <IDENTIFIER> { jjtThis.put("name", t.image); } #Var PrimaryL()
     | <THIS> #This PrimaryL()
-    | <NEW> #New ExpressionNew() PrimaryL()
+    | <NEW> ExpressionNew() PrimaryL()
     | <TRUE> #True PrimaryL()
     | <FALSE> #False PrimaryL()
 }
@@ -236,9 +236,17 @@ void PrimaryL() #void : {} {
     | {}
 }
 
-void ExpressionNew() : {} {
-    <INT> <LSQBR> Expression() <RSQBR>
-    | <IDENTIFIER> <LPAR> <RPAR>
+void ExpressionNew() #void : {} {
+    NewArray()
+    | NewInstance()
+}
+
+void NewArray() : {} {
+    <INT> <LSQBR> Expression() #Size <RSQBR>
+}
+
+void NewInstance() : { Token t; } {
+    t = <IDENTIFIER> { jjtThis.put("class", t.image); } <LPAR> <RPAR>
 }
 
 void ExpressionDot() #void : {  } {
