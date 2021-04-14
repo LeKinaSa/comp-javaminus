@@ -3,19 +3,18 @@ import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JMMSymbolTable implements SymbolTable {
-    private List<String> imports;
+    public final Set<String> imports = new HashSet<>();
     private String className, superclassName;
-    private List<Symbol> fields;
-    private List<String> methods;
-    private Map<String, MethodSymbolTable> methodSymbolTableMap;
+    public final Set<Symbol> fields = new HashSet<>();
+    public final Set<String> methods = new HashSet<>();
+    public final Map<String, MethodSymbolTable> methodSymbolTableMap = new HashMap<>();
 
     @Override
     public List<String> getImports() {
-        return imports;
+        return new ArrayList<>(imports);
     }
 
     @Override
@@ -30,12 +29,12 @@ public class JMMSymbolTable implements SymbolTable {
 
     @Override
     public List<Symbol> getFields() {
-        return fields;
+        return new ArrayList<>(fields);
     }
 
     @Override
     public List<String> getMethods() {
-        return methods;
+        return new ArrayList<>(methods);
     }
 
     @Override
@@ -51,5 +50,13 @@ public class JMMSymbolTable implements SymbolTable {
     @Override
     public List<Symbol> getLocalVariables(String methodName) {
         return methodSymbolTableMap.get(methodName).localVariables;
+    }
+
+    public void setClassName(String className) {
+        this.className = className;
+    }
+
+    public void setSuperclassName(String superclassName) {
+        this.superclassName = superclassName;
     }
 }
