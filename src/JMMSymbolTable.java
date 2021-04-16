@@ -44,12 +44,12 @@ public class JMMSymbolTable implements SymbolTable {
 
     @Override
     public List<Symbol> getParameters(String methodName) {
-        return methodSymbolTableMap.get(methodName).parameters;
+        return new ArrayList<>(methodSymbolTableMap.get(methodName).parameters);
     }
 
     @Override
     public List<Symbol> getLocalVariables(String methodName) {
-        return methodSymbolTableMap.get(methodName).localVariables;
+        return new ArrayList<>(methodSymbolTableMap.get(methodName).localVariables);
     }
 
     public void setClassName(String className) {
