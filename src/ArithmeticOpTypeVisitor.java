@@ -9,10 +9,10 @@ import pt.up.fe.comp.jmm.report.Stage;
 
 import java.util.*;
 
-class ArithmeticOpSameType extends PreorderJmmVisitor<List<Report>, Object> {
+class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
 
-    public ArithmeticOpSameType(JMMSymbolTable symbolTable) {
+    public ArithmeticOpTypeVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
 
         addVisit("Add", this::visitArithmeticExpression);
