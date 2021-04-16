@@ -18,8 +18,8 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
         addVisit("Import", this::visitImport);
         addVisit("Class", this::visitClass);
         addVisit("Method", this::visitMethod);
-        addVisit("VarDecl", this::visitVariables);
-        addVisit("Param", this::visitParameters);
+        addVisit("VarDecl", this::visitVariableDeclaration);
+        addVisit("Param", this::visitParameter);
     }
 
     private Object visitImport(JmmNode node, List<Report> reports) {
@@ -71,7 +71,8 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
         if (name.equals("main")) {
             returnType = new Type("void", false);
-        } else {
+        }
+        else {
             String returnTypeName = node.get("returnType");
             returnType = new Type(returnTypeName, returnTypeName.endsWith("[]"));
         }
@@ -85,40 +86,54 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
         return null;
     }
 
-    private Object visitVariables(JmmNode node, List<Report> reports) {
-        String name = node.get("name");
-        Type varType = new Type(node.get("type"), node.get("type").endsWith("[]"));
-        Symbol symbol = new Symbol(varType, name);
-        if(node.getParent().getKind().equals("Class")) { // Global Variables
-            if(!symbolTable.fields.add(symbol)) {
-                String message = "Variable " + name + " in class " + node.getParent().get("name") + " already exists";
+    private Object visitVariableDeclaration(JmmNode node, List<Report> reports) {
+        String name = node.get("name"), typeName = node.get("type");
+        Type type = new Type(typeName, typeName.endsWith("[]"));
+        Symbol symbol = new Symbol(type, name);
+
+        if (node.getParent().getKind().equals("Class")) { // Class field
+            if (!symbolTable.fields.add(symbol)) {
+                String message = "The field named " + name + " of type " + typeName + " in class " +
+                        node.getParent().get("name") + " already exists";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
             }
-        } else if(node.getParent().getKind().equals("Body")) { // Method Local Variable
+        }
+        else if (node.getParent().getKind().equals("Body")) { // Method local variable
             Optional<JmmNode> methodNode = node.getAncestor("Method");
-            if(methodNode.isPresent()) {
+
+            if (methodNode.isPresent()) {
                 String signature = getMethodSignature(methodNode.get());
-                if(!symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol)) {
-                    String message = "Variable " + name + " in method with signature " + signature + " already exists";
+
+                if (!symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol)
+                        || symbolTable.fields.contains(symbol)
+                        || symbolTable.methodSymbolTableMap.get(signature).parameters.contains(symbol)) {
+                    String message = "The variable named " + name + " of type " + typeName +
+                            " in the method with signature " + signature + " already exists";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
                 }
             }
         }
+
         return null;
     }
 
-    private Object visitParameters(JmmNode node, List<Report> reports) {
-        String name = node.get("name");
-        Type varType = new Type(node.get("type"), node.get("type").endsWith("[]"));
-        Symbol symbol = new Symbol(varType, name);
+    private Object visitParameter(JmmNode node, List<Report> reports) {
+        String name = node.get("name"), typeName = node.get("type");
+        Type type = new Type(typeName, typeName.endsWith("[]"));
+        Symbol symbol = new Symbol(type, name);
         Optional<JmmNode> methodNode = node.getAncestor("Method");
-        if(methodNode.isPresent()) {
+
+        if (methodNode.isPresent()) {
             String signature = getMethodSignature(methodNode.get());
-            if(!symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol)) {
-                String message = "Parameter " + name + " in method with signature " + signature + " already exists";
+
+            if (!symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol)
+                    || symbolTable.fields.contains(symbol)) {
+                String message = "The parameter " + name + " of type " + typeName +
+                        " in the method with signature " + signature + " already exists";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
             }
         }
+
         return null;
     }
 }
