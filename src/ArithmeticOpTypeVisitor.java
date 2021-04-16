@@ -36,7 +36,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode leftChild = children.get(0);
         JmmNode rightChild = children.get(1);
 
-        // Childs (Int or Expression)
+        // Childs (Int or Expression or Add, Sub, Mul, Div)
         Boolean result = (leftChild.getKind().equals("int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
                 && (rightChild.getKind().equals("int") || rightChild.getKind().equals("Expression") || isOperator(rightChild.getKind()));
 
@@ -73,7 +73,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             } else if(rightChild.getKind().equals("Var")) // Variable
                 rightChildType = getVariableType(signature, rightChild.get("name")).getType().getName();
 
-            // Childs (Both variable and with the same type (int))
+            // Childs (Both variables with the same type (int))
             if(leftChildType != null && rightChildType != null)
                 return leftChildType.equals(rightChildType) && leftChildType.equals("int");
             else {
