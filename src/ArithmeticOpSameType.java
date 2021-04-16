@@ -37,66 +37,95 @@ class ArithmeticOpSameType extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode rightChild = children.get(1);
 
         // Childs (Int or Expression)
-        Boolean result = (leftChild.getKind().equals("int") || leftChild.getKind().equals("Expression"))
-                && (rightChild.getKind().equals("int") || rightChild.getKind().equals("Expression"));
+        Boolean result = (leftChild.getKind().equals("int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
+                && (rightChild.getKind().equals("int") || rightChild.getKind().equals("Expression") || isOperator(rightChild.getKind()));
 
         if(!result) {
-            Symbol leftChildSymbol = null, rightChildSymbol = null;
-            if(leftChild.getKind().equals("Var"))
-                leftChildSymbol = getVariableType(signature, leftChild.get("name"));
-            else if(rightChild.getKind().equals("Var"))
-                rightChildSymbol = getVariableType(signature, rightChild.get("name"));
+            String leftChildType = null, rightChildType = null;
 
-            // Childs (Both variable and with the same type)
-            if(leftChildSymbol != null && rightChildSymbol != null) {
-                return leftChildSymbol.getType().equals(rightChildSymbol.getType());
-            }
-            // Childs (this.method - returnType) -> LEFT
+            // Childs (this.method or array.length) -> LEFT
             if(leftChild.getKind().equals("Dot")) {
                 List<JmmNode> leftChildChildren = leftChild.getChildren();
-                JmmNode leftChildThis = leftChildChildren.get(0);
+                JmmNode leftChildNode = leftChildChildren.get(0);
 
-                if(leftChildThis.getKind().equals("This")) {
+                if(leftChildNode.getKind().equals("This")) { // this.method
                     JmmNode leftChildFunction = leftChildChildren.get(1);
-                    if(rightChildSymbol != null)
-                        return rightChildSymbol.getType().getName().equals(getFunctionType(leftChildFunction.get("name")));
+                    leftChildType = getFunctionType(signature, leftChildFunction);
+                } else if(leftChildNode.getKind().equals("Var") && leftChildChildren.get(1).getKind().equals("Length")) { // array.method
+                    if(getVariableType(signature, leftChildChildren.get(0).get("name")).equals("int[]"))
+                        leftChildType = "int";
                 }
-            }
+            } else if(leftChild.getKind().equals("Var")) // Variable
+                leftChildType = getVariableType(signature, leftChild.get("name")).getType().getName();
 
-            // Childs (this.method - returnType) -> RIGHT
+            // Childs (this.method or array.length) -> RIGHT
             if(rightChild.getKind().equals("Dot")) {
                 List<JmmNode> rightChildChildren = rightChild.getChildren();
-                JmmNode rightChildThis = rightChildChildren.get(0);
+                JmmNode rightChildNode = rightChildChildren.get(0);
 
-                if(rightChildThis.getKind().equals("This")) {
+                if(rightChildNode.getKind().equals("This")) { // this.method
                     JmmNode rightChildFunction = rightChildChildren.get(1);
-                    if(leftChildSymbol != null)
-                        return leftChildSymbol.getType().getName().equals(getFunctionType(rightChildFunction.get("name")));
+                    rightChildType = getFunctionType(signature, rightChildFunction);
+                } else if(rightChildNode.getKind().equals("Var") && rightChildChildren.get(1).getKind().equals("Length")) { // array.method
+                    if(getVariableType(signature, rightChildChildren.get(0).get("name")).equals("int[]"))
+                        rightChildType = "int";
                 }
-            }
-            return true;
+            } else if(rightChild.getKind().equals("Var")) // Variable
+                rightChildType = getVariableType(signature, rightChild.get("name")).getType().getName();
 
-            /*else {
-                if(leftChildSymbol != null) {
-                    String message = "Variable " + leftChild.get("name") + " not declared";
-                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-                }
-                if(rightChildSymbol != null) {
-                    String message = "Variable " + rightChild.get("name") + " not declared";
-                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-                }
+            // Childs (Both variable and with the same type (int))
+            if(leftChildType != null && rightChildType != null)
+                return leftChildType.equals(rightChildType) && leftChildType.equals("int");
+            else {
+                checkReports(reports, leftChild, leftChildType);
+                checkReports(reports, rightChild, rightChildType);
                 return false;
-            }*/
-        } else
-            return true;
+            }
+        }
+
+        return true;
     }
 
-    private Type getFunctionType(String functionName) {
-        /*String signature = symbolTable.getFunctionSignature(functionName)
-        if(symbolTable.methodSymbolTableMap.containsKey(signature))
-            return symbolTable.methodSymbolTableMap.get(signature).returnType;
-        else return null;*/
-        return null;
+    private void checkReports(List<Report> reports, JmmNode child, String childType) {
+        if(childType == null) {
+            String message = "Variable " + child.get("name") + " not declared";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+        } else {
+            String message = "Variable " + child.get("name") + " with incorrect type";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+        }
+    }
+
+    private String getNodeFunctionSignature(String methodSignature, JmmNode node) {
+        String signature = node.get("name");
+
+        if (signature.equals("main"))
+            signature += "(String[])";
+        else {
+            JmmNode argsNode = node.getChildren().get(0);
+            if(argsNode != null) {
+                List<JmmNode> expressionNodes = argsNode.getChildren();
+                List<String> types = new ArrayList<>();
+
+                signature += "(";
+
+                for(JmmNode expressionNode: expressionNodes) {
+                    String varName = expressionNode.getChildren().get(0).get("name");
+                    Symbol varSymbol = getVariableType(methodSignature, varName);
+                    types.add(varSymbol.getType().getName());
+                }
+
+                signature += String.join(", ", types) + ")";
+            }
+        }
+        return signature;
+    }
+
+    private String getFunctionType(String methodSignature, JmmNode funcNode) {
+        String newSignature = getNodeFunctionSignature(methodSignature, funcNode);
+        if(symbolTable.methodSymbolTableMap.containsKey(newSignature))
+            return symbolTable.methodSymbolTableMap.get(newSignature).returnType.getName();
+        else return null;
     }
 
     private Symbol getVariableType(String signature, String varName) {
@@ -111,6 +140,11 @@ class ArithmeticOpSameType extends PreorderJmmVisitor<List<Report>, Object> {
         return symbol;
     }
 
+    private Boolean isOperator(String nodeKind) {
+        return nodeKind.equals("Add") || nodeKind.equals("Sub") || nodeKind.equals("Mul") || nodeKind.equals("Div");
+    }
+
+    // Needs refactoring
     private String getMethodSignature(JmmNode node) {
         String signature = node.get("name");
 
@@ -135,93 +169,4 @@ class ArithmeticOpSameType extends PreorderJmmVisitor<List<Report>, Object> {
         }
         return signature;
     }
-
-    /*private Object visitClass(JmmNode node, List<Report> reports) {
-        symbolTable.setClassName(node.get("name"));
-        symbolTable.setSuperclassName(node.get("extends"));
-        return null;
-    }
-
-    private String getMethodSignature(JmmNode node) {
-        String signature = node.get("name");
-
-        if (signature.equals("main"))
-            signature += "(String[])";
-        else {
-            Optional<JmmNode> optional = node.getChildren().stream().filter(child -> child.getKind().equals("Params")).findFirst();
-
-            signature += "(";
-
-            if (optional.isPresent()) {
-                JmmNode paramsNode = optional.get();
-                List<String> types = new ArrayList<>();
-
-                for (JmmNode param : paramsNode.getChildren()) {
-                    types.add(param.get("type"));
-                }
-
-                signature += String.join(", ", types);
-            }
-            signature += ")";
-        }
-        return signature;
-    }
-
-    private Object visitMethod(JmmNode node, List<Report> reports) {
-        String signature = getMethodSignature(node);
-        String name = node.get("name");
-        Type returnType;
-
-        if (name.equals("main")) {
-            returnType = new Type("void", false);
-        } else {
-            String returnTypeName = node.get("returnType");
-            returnType = new Type(returnTypeName, returnTypeName.endsWith("[]"));
-        }
-
-        if (!symbolTable.methods.add(signature)) {
-            String message = "Method with signature " + signature + " already exists";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-        }
-
-        symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, new HashSet<>(), new HashSet<>()));
-        return null;
-    }
-
-    private Object visitVariables(JmmNode node, List<Report> reports) {
-        String name = node.get("name");
-        Type varType = new Type(node.get("type"), node.get("type").endsWith("[]"));
-        Symbol symbol = new Symbol(varType, name);
-        if(node.getParent().getKind().equals("Class")) { // Global Variables
-            if(!symbolTable.fields.add(symbol)) {
-                String message = "Variable " + name + " in class " + node.getParent().get("name") + " already exists";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-            }
-        } else if(node.getParent().getKind().equals("Body")) { // Method Local Variable
-            Optional<JmmNode> methodNode = node.getAncestor("Method");
-            if(methodNode.isPresent()) {
-                String signature = getMethodSignature(methodNode.get());
-                if(!symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol)) {
-                    String message = "Variable " + name + " in method with signature " + signature + " already exists";
-                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-                }
-            }
-        }
-        return null;
-    }
-
-    private Object visitParameters(JmmNode node, List<Report> reports) {
-        String name = node.get("name");
-        Type varType = new Type(node.get("type"), node.get("type").endsWith("[]"));
-        Symbol symbol = new Symbol(varType, name);
-        Optional<JmmNode> methodNode = node.getAncestor("Method");
-        if(methodNode.isPresent()) {
-            String signature = getMethodSignature(methodNode.get());
-            if(!symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol)) {
-                String message = "Parameter " + name + " in method with signature " + signature + " already exists";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-            }
-        }
-        return null;
-    }*/
 }
