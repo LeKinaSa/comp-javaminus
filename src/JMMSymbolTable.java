@@ -59,4 +59,13 @@ public class JMMSymbolTable implements SymbolTable {
     public void setSuperclassName(String superclassName) {
         this.superclassName = superclassName;
     }
+
+    public Symbol getField(String fieldName) {
+        for(Symbol symbol: this.fields) {
+            if(symbol.getName().equals(fieldName))
+                return symbol;
+        }
+
+        return null;
+    }
 }

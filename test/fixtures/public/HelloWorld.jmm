@@ -1,6 +1,11 @@
-import ioPlus;
-class HelloWorld {
-	public static void main(String[] args) {
-		ioPlus.printHelloWorld();
-	}
+class T {
+    public static void main(String[] s) {
+
+        true < 2;
+        new a() + 2 - 1;
+        1 + a;
+        c = a + this.constInstr(a);
+
+
+    }
 }

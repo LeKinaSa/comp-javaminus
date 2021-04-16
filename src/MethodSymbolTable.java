@@ -21,4 +21,22 @@ public class MethodSymbolTable {
     public boolean addLocalVariable(Symbol symbol) {
         return this.localVariables.add(symbol);
     }
+
+    public Symbol getParameter(String fieldName) {
+        for(Symbol symbol: this.parameters) {
+            if(symbol.getName().equals(fieldName))
+                return symbol;
+        }
+
+        return null;
+    }
+
+    public Symbol getLocalVariable(String fieldName) {
+        for(Symbol symbol: this.localVariables) {
+            if(symbol.getName().equals(fieldName))
+                return symbol;
+        }
+
+        return null;
+    }
 }
