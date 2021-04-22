@@ -54,7 +54,6 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     JmmNode leftChildFunction = leftChildChildren.get(1);
                     leftChildType = getFunctionType(signature, leftChildFunction);
                 } else if(leftChildNode.getKind().equals("Var") && leftChildChildren.get(1).getKind().equals("Length")) { // array.method
-                    System.out.println("LEFT");
                     String varType = getVariableType(signature, leftChildChildren.get(0).get("name"));
                     if(varType != null) {
                         if(varType.equals("int[]"))
