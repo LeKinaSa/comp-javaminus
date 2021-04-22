@@ -35,7 +35,17 @@ public class AnalysisStage implements JmmAnalysis {
 
         JmmNode node = parserResult.getRootNode();
 
-        System.out.println("Dump tree with Visitor where you control tree traversal");
+        // Get Symbol Table
+        JMMSymbolTable symbolTable = new JMMSymbolTable();
+        SymbolTableVisitor symbolTableVisitor = new SymbolTableVisitor(symbolTable);
+        symbolTableVisitor.visit(node);
+
+        // Arithmetic Visitor - STILL NEED TO HANDLE REPORTS!
+        ArithmeticOpTypeVisitor arithmeticVisitor = new ArithmeticOpTypeVisitor(symbolTable);
+        arithmeticVisitor.visit(node);
+
+
+        /*System.out.println("Dump tree with Visitor where you control tree traversal");
         ExampleVisitor visitor = new ExampleVisitor("Identifier", "id");
         System.out.println(visitor.visit(node, ""));
 
@@ -53,7 +63,7 @@ public class AnalysisStage implements JmmAnalysis {
         System.out.println(
                 "Print variables name and line, and their corresponding parent with Visitor that automatically performs preorder tree traversal");
         var varPrinter = new ExamplePrintVariables("Variable", "name", "line");
-        varPrinter.visit(node, null);
+        varPrinter.visit(node, null);*/
 
         // No Symbol Table being calculated yet
         return new JmmSemanticsResult(parserResult, null, new ArrayList<>());

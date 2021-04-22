@@ -35,7 +35,9 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitClass(JmmNode node, List<Report> reports) {
         symbolTable.setClassName(node.get("name"));
-        symbolTable.setSuperclassName(node.get("extends"));
+        Optional<String> extendClass = node.getOptional("extends");
+        if(extendClass.isPresent())
+            symbolTable.setSuperclassName(node.get("extends"));
         return null;
     }
 

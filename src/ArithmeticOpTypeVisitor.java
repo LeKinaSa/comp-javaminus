@@ -1,4 +1,5 @@
 
+import jdk.swing.interop.SwingInterOpUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.Type;
@@ -37,11 +38,12 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode rightChild = children.get(1);
 
         // Childs (Int or Expression or Add, Sub, Mul, Div)
-        Boolean result = (leftChild.getKind().equals("int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
-                && (rightChild.getKind().equals("int") || rightChild.getKind().equals("Expression") || isOperator(rightChild.getKind()));
+        Boolean result = (leftChild.getKind().equals("Int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
+                && (rightChild.getKind().equals("Int") || rightChild.getKind().equals("Expression") || isOperator(rightChild.getKind()));
 
         if(!result) {
-            String leftChildType = null, rightChildType = null;
+            String leftChildType = (leftChild.getKind().equals("Int")) ? "int" : null;
+            String rightChildType = (rightChild.getKind().equals("Int")) ? "int" : null;
 
             // Childs (this.method or array.length) -> LEFT
             if(leftChild.getKind().equals("Dot")) {
@@ -52,11 +54,17 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     JmmNode leftChildFunction = leftChildChildren.get(1);
                     leftChildType = getFunctionType(signature, leftChildFunction);
                 } else if(leftChildNode.getKind().equals("Var") && leftChildChildren.get(1).getKind().equals("Length")) { // array.method
-                    if(getVariableType(signature, leftChildChildren.get(0).get("name")).equals("int[]"))
-                        leftChildType = "int";
+                    System.out.println("LEFT");
+                    String varType = getVariableType(signature, leftChildChildren.get(0).get("name"));
+                    if(varType != null) {
+                        if(varType.equals("int[]"))
+                            leftChildType = "int";
+                        else
+                            leftChildType = varType;
+                    }
                 }
             } else if(leftChild.getKind().equals("Var")) // Variable
-                leftChildType = getVariableType(signature, leftChild.get("name")).getType().getName();
+                leftChildType = getVariableType(signature, leftChild.get("name"));
 
             // Childs (this.method or array.length) -> RIGHT
             if(rightChild.getKind().equals("Dot")) {
@@ -67,15 +75,22 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     JmmNode rightChildFunction = rightChildChildren.get(1);
                     rightChildType = getFunctionType(signature, rightChildFunction);
                 } else if(rightChildNode.getKind().equals("Var") && rightChildChildren.get(1).getKind().equals("Length")) { // array.method
-                    if(getVariableType(signature, rightChildChildren.get(0).get("name")).equals("int[]"))
-                        rightChildType = "int";
+                    String varType = getVariableType(signature, rightChildChildren.get(0).get("name"));
+                    if(varType != null) {
+                        if(varType.equals("int[]"))
+                            rightChildType = "int";
+                        else
+                            rightChildType = varType;
+                    }
                 }
             } else if(rightChild.getKind().equals("Var")) // Variable
-                rightChildType = getVariableType(signature, rightChild.get("name")).getType().getName();
+                rightChildType = getVariableType(signature, rightChild.get("name"));
 
+            System.out.println("Left type: " + leftChildType);
+            System.out.println("Right type: " + rightChildType);
             // Childs (Both variables with the same type (int))
-            if(leftChildType != null && rightChildType != null)
-                return leftChildType.equals(rightChildType) && leftChildType.equals("int");
+            if(leftChildType != null && rightChildType != null && leftChildType.equals(rightChildType) && leftChildType.equals("int"))
+                return true;
             else {
                 checkReports(reports, leftChild, leftChildType);
                 checkReports(reports, rightChild, rightChildType);
@@ -87,13 +102,20 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     }
 
     private void checkReports(List<Report> reports, JmmNode child, String childType) {
-        if(childType == null) {
-            String message = "Variable " + child.get("name") + " not declared";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-        } else {
-            String message = "Variable " + child.get("name") + " with incorrect type";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
-        }
+        String message = null;
+        if(child.getKind().equals("Dot") && child.getChildren().get(0).getKind().equals("Var"))
+            message = "Variable " + child.getChildren().get(0).get("name") + " w/incorrect type!";
+        else if(child.getKind().equals("Dot") && child.getChildren().get(0).getKind().equals("This"))
+            message = "Function " + child.getChildren().get(1).get("name") + " w/incorrect type!";
+        else if(childType == null)
+            message = "Variable " + child.get("name") + " not declared!";
+        else if(child.getKind().equals("Var"))
+            message = "Variable " + child.get("name") + " w/incorrect type!";
+        else  // Defensive programming
+            message = "Unknown error occured!";
+
+        System.out.println(message);
+        reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
     }
 
     private String getNodeFunctionSignature(String methodSignature, JmmNode node) {
@@ -111,8 +133,8 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
                 for(JmmNode expressionNode: expressionNodes) {
                     String varName = expressionNode.getChildren().get(0).get("name");
-                    Symbol varSymbol = getVariableType(methodSignature, varName);
-                    types.add(varSymbol.getType().getName());
+                    String varType = getVariableType(methodSignature, varName);
+                    types.add(varType);
                 }
 
                 signature += String.join(", ", types) + ")";
@@ -128,7 +150,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         else return null;
     }
 
-    private Symbol getVariableType(String signature, String varName) {
+    private String getVariableType(String signature, String varName) {
         Symbol symbol = null;
         if(symbolTable.methodSymbolTableMap.containsKey(signature)) {
             symbol = symbolTable.methodSymbolTableMap.get(signature).getLocalVariable(varName);
@@ -137,7 +159,10 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
         if (symbol == null)
             symbol = symbolTable.getField(varName); // Check global variables
-        return symbol;
+        if(symbol == null)
+            return null;
+        else
+            return symbol.getType().getName();
     }
 
     private Boolean isOperator(String nodeKind) {
