@@ -21,7 +21,8 @@ public class Main implements JmmParser {
 
 			if (Reports.getReports().isEmpty())
     			root.dump(""); // prints the tree on the screen
-    		//System.out.println(root.toJson());ana
+
+			// System.out.println(root.toJson());
     		return new JmmParserResult(root, Reports.getReports());
 		} catch (ParseException ex) {
 			Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.beginLine, ex.getMessage()));
@@ -31,16 +32,13 @@ public class Main implements JmmParser {
 
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
-		String jmmCode = new String((new FileInputStream("src/HelloWorld.jmm")).readAllBytes());
+
+		// String jmmCode = new String((new FileInputStream("src/HelloWorld.jmm")).readAllBytes());
+		String jmmCode = new String((new FileInputStream(args[0])).readAllBytes());
 		JmmParserResult parserResult = main.parse(jmmCode);
 		// System.out.println(parserResult.toJson());
 
 		try {
-			// JmmNode root = parserResult.getRootNode().sanitize();
-			// JMMSymbolTable symbolTable = new JMMSymbolTable();
-			// SymbolTableVisitor symbolTableVisitor = new SymbolTableVisitor(symbolTable);
-			// symbolTableVisitor.visit(root);
-			// System.out.println(symbolTable.getFields());
 			AnalysisStage analysisStage = new AnalysisStage();
 			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
 		} catch (Exception e) {
