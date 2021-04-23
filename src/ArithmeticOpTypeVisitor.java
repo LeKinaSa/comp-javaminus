@@ -60,8 +60,8 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             }
         case "Var":
             if(parentNode.getKind().equals("Dot")) { // array.length
-                Type varType = getVariableType(methodSignature, parentNode.getChildren().get(1).get("name"));
-                if(varType.getName().equals("int[]"))
+                Type varType = getVariableType(methodSignature, parentNode.getChildren().get(0).get("name"));
+                if(varType != null && varType.getName().equals("int[]"))
                     return new Type("int", false);
                 return varType;
             }
@@ -75,12 +75,23 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     }
 
     private Boolean verifyType(JmmNode node, String signature, List<Report> reports) {
-        List<JmmNode> children = node.getChildren();
-        JmmNode leftChild = children.get(0);
-        JmmNode rightChild = children.get(1);
+        // List<JmmNode> children = node.getChildren();
+        JmmNode leftChild = node.getChildren().get(0);
+        JmmNode rightChild = node.getChildren().get(1);
+
+        Type leftType = getExpressionType(leftChild, signature);
+        Type rightType = getExpressionType(rightChild, signature);
+
+        System.out.println("Left type: " + leftType);
+        System.out.println("Right type: " + rightType);
+        // Childs (Both variables with the same type (int))
+        if(leftType == null || rightType == null || !leftType.equals(rightType)) {
+            System.out.println("SEMANTIC ERROR!");
+        }
+        return true;
 
         // Childs (Int or Expression or Add, Sub, Mul, Div)
-        Boolean result = (leftChild.getKind().equals("Int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
+        /*Boolean result = (leftChild.getKind().equals("Int") || leftChild.getKind().equals("Expression") || isOperator(leftChild.getKind()))
                 && (rightChild.getKind().equals("Int") || rightChild.getKind().equals("Expression") || isOperator(rightChild.getKind()));
 
         if(!result) {
@@ -139,7 +150,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             }
         }
 
-        return true;
+        return true;*/
     }
 
     private void checkReports(List<Report> reports, JmmNode child, String childType) {
