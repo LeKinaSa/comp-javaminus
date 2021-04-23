@@ -15,6 +15,10 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
     private final Set<String> initializedVariables = new HashSet<>();
 
+    private static final Type intType = new Type("int", false),
+            booleanType = new Type("boolean", false),
+            intArrayType = new Type("int", true);
+
     public TypeVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
 
@@ -26,9 +30,15 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         addVisit("And", this::visitBooleanExpression);
         addVisit("Not", this::visitBooleanExpression);
+        addVisit("Condition", this::visitBooleanExpression);
+
         addVisit("Assign", this::visitAssignment);
 
         addVisit("Var", this::visitVariable);
+        addVisit("Size", this::visitSize);
+        addVisit("ArrayAccess", this::visitArrayAccess);
+
+        addVisit("Dot", this::visitDot);
     }
 
     private Object visitArithmeticExpression(JmmNode node, List<Report> reports) {
@@ -41,8 +51,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         else {
             return null;
         }
-
-        final Type intType = new Type("int", false);
 
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
@@ -77,8 +85,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         else {
             return null;
         }
-
-        final Type booleanType = new Type("boolean", false);
 
         JmmNode firstChild = node.getChildren().get(0);
         Type firstType = getExpressionType(firstChild, signature);
@@ -118,7 +124,28 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         Type leftType = getExpressionType(leftChild, signature);
         Type rightType = getExpressionType(rightChild, signature);
 
-        initializedVariables.add(leftChild.get("name"));
+        String varName;
+
+        if (leftChild.getKind().equals("Var")) {
+            varName = leftChild.get("name");
+        }
+        else if (leftChild.getKind().equals("ArrayAccess")) {
+            JmmNode arrayAccessLeftChild = leftChild.getChildren().get(0);
+
+            if (arrayAccessLeftChild.getKind().equals("Var")) {
+                varName = arrayAccessLeftChild.get("name");
+            }
+            else {
+                return null;
+            }
+        }
+        else {
+            String message = "Left side of assignment is not a variable.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+            return null;
+        }
+
+        initializedVariables.add(varName);
 
         if (leftType == null || !leftType.equals(rightType)) {
             String message = "Type mismatch in assignment";
@@ -155,58 +182,143 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         return null;
     }
+    
+    private Object visitSize(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        JmmNode child = node.getChildren().get(0);
+
+        Type childType = getExpressionType(child, signature);
+
+        // Child (array size expression) needs to evaluate to an int
+        if (!intType.equals(childType)) {
+            String message = "Array size must be an integer";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(child.get("line")), Integer.parseInt(child.get("col")), message));
+        }
+
+        return null;
+    }
+
+    private Object visitArrayAccess(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        JmmNode var = node.getChildren().get(0);
+
+        if (!var.getKind().equals("Var")) {
+            String message = "Not an array";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(var.get("line")), Integer.parseInt(var.get("col")), message));
+        }
+        else {
+            String varName = var.get("name");
+            Type varType = getVariableType(signature, varName);
+            
+            if (varType == null || !varType.equals(intArrayType)) {
+                String message = "Invalid array access: variable " + varName + " is not an array";
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(var.get("line")), Integer.parseInt(var.get("col")), message));
+            }
+        }
+
+        JmmNode index = node.getChildren().get(1);
+        Type indexType = getExpressionType(index, signature);
+
+        // Child (array index) needs to evaluate to an int
+        if (!intType.equals(indexType)) {
+            String message = "Invalid index type for array";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(index.get("line")), Integer.parseInt(index.get("col")), message));
+        }
+
+        return null;
+    }
+
+    public Object visitDot(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        JmmNode leftChild = node.getChildren().get(0);
+        JmmNode rightChild = node.getChildren().get(1);
+
+        Type leftType = getExpressionType(leftChild, signature);
+
+        if (rightChild.getKind().equals("Length") && (leftType == null || !leftType.isArray())) {
+            String message = "Builtin \"length\" can only be used with arrays.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(leftChild.get("line")), Integer.parseInt(leftChild.get("col")), message));
+        }
+
+        return null;
+    }
 
     public Type getExpressionType(JmmNode node, String methodSignature) {
-        // TODO: New
         JmmNode parentNode = node.getParent();
 
         switch (node.getKind()) {
-        case "And":
-        case "LessThan":
-        case "Not":
-        case "True":
-        case "False":
-            return new Type("boolean", false);
-        case "Expression":
-            if (node.getNumChildren() == 1) {
-                return getExpressionType(node.getChildren().get(0), methodSignature);
-            }
-            break;
-        case "Add":
-        case "Sub":
-        case "Mul":
-        case "Div":
-        case "Int":
-            return new Type("int", false);
-        case "This":
-            if (parentNode.getKind().equals("Dot")) { // this.method
-                return getReturnType(methodSignature, parentNode.getChildren().get(1));
-            }
-            break;
-        case "Var":
-            return getVariableType(methodSignature, node.get("name")); // Variable
-        case "Dot": {
-            JmmNode rightChild = node.getChildren().get(1);
+            case "And":
+            case "LessThan":
+            case "Not":
+            case "True":
+            case "False":
+                return new Type("boolean", false);
+            case "Expression":
+                if (node.getNumChildren() == 1) {
+                    return getExpressionType(node.getChildren().get(0), methodSignature);
+                }
+                break;
+            case "Add":
+            case "Sub":
+            case "Mul":
+            case "Div":
+            case "Int":
+            case "ArrayAccess": // TODO: if args array in main will be used, change this
+                return new Type("int", false);
+            case "This":
+                if (parentNode.getKind().equals("Dot")) { // this.method
+                    return getReturnType(methodSignature, parentNode.getChildren().get(1));
+                }
+                break;
+            case "Var":
+                return getVariableType(methodSignature, node.get("name")); // Variable
+            case "Dot": {
+                JmmNode rightChild = node.getChildren().get(1);
 
-            if (rightChild.getKind().equals("Length")) {
-                Type type = getVariableType(methodSignature, node.getChildren().get(0).get("name"));
-
-                if (type != null && type.isArray()) {
-                    return new Type(type.getName(), false);
+                if (rightChild.getKind().equals("Length")) {
+                    return new Type("int", false);
+                }
+                else if (rightChild.getKind().equals("Func")) {
+                    return getExpressionType(rightChild, methodSignature);
                 }
 
-                return type;
+                break;
             }
-            else if (rightChild.getKind().equals("Func")) {
-                return getExpressionType(rightChild, methodSignature);
-            }
-            
-            break;
-        }
-        case "Func":
-            return getReturnType(methodSignature, node);
-        default:
-            break;
+            case "Func":
+                return getReturnType(methodSignature, node);
+            case "NewArray":
+                return new Type("int", true);
+            case "NewInstance":
+                return new Type(node.get("class"), false);
+            default:
+                break;
         }
 
         return null;
