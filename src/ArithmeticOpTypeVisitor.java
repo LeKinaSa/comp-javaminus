@@ -32,12 +32,11 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return null;
     }
 
-    public Type getExpressionType(JmmNode node) {
-        // TODO: Dot, New, Var
+    public Type getExpressionType(JmmNode node, String methodSignature) {
+        // TODO: New
+        JmmNode parentNode = node.getParent();
 
         switch (node.getKind()) {
-        case "Int":
-            return new Type("int", false);
         case "And":
         case "LessThan":
         case "Not":
@@ -46,19 +45,33 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             return new Type("boolean", false);
         case "Expression":
             if (node.getNumChildren() == 1) {
-                return getExpressionType(node.getChildren().get(0));
+                return getExpressionType(node.getChildren().get(0), methodSignature);
             }
             break;
         case "Add":
         case "Sub":
         case "Mul":
         case "Div":
+        case "Int":
             return new Type("int", false);
         case "This":
-            return new Type(symbolTable.getClassName(), false);
+            if(parentNode.getKind().equals("Dot")) { // this.method
+                return getFunctionType(methodSignature, parentNode.getChildren().get(1));
+            }
+        case "Var":
+            if(parentNode.getKind().equals("Dot")) { // array.length
+                Type varType = getVariableType(methodSignature, parentNode.getChildren().get(1).get("name"));
+                if(varType.getName().equals("int[]"))
+                    return new Type("int", false);
+                return varType;
+            }
+            return getVariableType(methodSignature, node.get("name")); // Variable
+        case "Dot":
+            return getExpressionType(node.getChildren().get(0), methodSignature);
         default:
             break;
         }
+        return null;
     }
 
     private Boolean verifyType(JmmNode node, String signature, List<Report> reports) {
@@ -81,9 +94,9 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
                 if(leftChildNode.getKind().equals("This")) { // this.method
                     JmmNode leftChildFunction = leftChildChildren.get(1);
-                    leftChildType = getFunctionType(signature, leftChildFunction);
+                    leftChildType = getFunctionType(signature, leftChildFunction).getName();
                 } else if(leftChildNode.getKind().equals("Var") && leftChildChildren.get(1).getKind().equals("Length")) { // array.method
-                    String varType = getVariableType(signature, leftChildChildren.get(0).get("name"));
+                    String varType = getVariableType(signature, leftChildChildren.get(0).get("name")).getName();
                     if(varType != null) {
                         if(varType.equals("int[]"))
                             leftChildType = "int";
@@ -92,7 +105,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     }
                 }
             } else if(leftChild.getKind().equals("Var")) // Variable
-                leftChildType = getVariableType(signature, leftChild.get("name"));
+                leftChildType = getVariableType(signature, leftChild.get("name")).getName();
 
             // Childs (this.method or array.length) -> RIGHT
             if(rightChild.getKind().equals("Dot")) {
@@ -101,9 +114,9 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
                 if(rightChildNode.getKind().equals("This")) { // this.method
                     JmmNode rightChildFunction = rightChildChildren.get(1);
-                    rightChildType = getFunctionType(signature, rightChildFunction);
+                    rightChildType = getFunctionType(signature, rightChildFunction).getName();
                 } else if(rightChildNode.getKind().equals("Var") && rightChildChildren.get(1).getKind().equals("Length")) { // array.method
-                    String varType = getVariableType(signature, rightChildChildren.get(0).get("name"));
+                    String varType = getVariableType(signature, rightChildChildren.get(0).get("name")).getName();
                     if(varType != null) {
                         if(varType.equals("int[]"))
                             rightChildType = "int";
@@ -112,7 +125,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     }
                 }
             } else if(rightChild.getKind().equals("Var")) // Variable
-                rightChildType = getVariableType(signature, rightChild.get("name"));
+                rightChildType = getVariableType(signature, rightChild.get("name")).getName();
 
             System.out.println("Left type: " + leftChildType);
             System.out.println("Right type: " + rightChildType);
@@ -161,7 +174,7 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
                 for(JmmNode expressionNode: expressionNodes) {
                     String varName = expressionNode.getChildren().get(0).get("name");
-                    String varType = getVariableType(methodSignature, varName);
+                    String varType = getVariableType(methodSignature, varName).getName();
                     types.add(varType);
                 }
 
@@ -171,26 +184,23 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return signature;
     }
 
-    private String getFunctionType(String methodSignature, JmmNode funcNode) {
+    private Type getFunctionType(String methodSignature, JmmNode funcNode) {
         String newSignature = getNodeFunctionSignature(methodSignature, funcNode);
         if(symbolTable.methodSymbolTableMap.containsKey(newSignature))
-            return symbolTable.methodSymbolTableMap.get(newSignature).returnType.getName();
+            return symbolTable.methodSymbolTableMap.get(newSignature).returnType;
         else return null;
     }
 
-    private String getVariableType(String signature, String varName) {
+    private Type getVariableType(String signature, String varName) {
         Symbol symbol = null;
         if(symbolTable.methodSymbolTableMap.containsKey(signature)) {
-            symbol = symbolTable.methodSymbolTableMap.get(signature).getLocalVariable(varName);
-            if (symbol == null) // Check Method Local Variables
-                symbol = symbolTable.methodSymbolTableMap.get(signature).getParameter(varName); // Check Method Parameters
+            symbol = (symbol == null) ?  symbolTable.methodSymbolTableMap.get(signature).getLocalVariable(varName) : null; // Check Method Local Variables
+            symbol = (symbol == null) ?  symbolTable.methodSymbolTableMap.get(signature).getParameter(varName) : null; // Check Method Parameters
         }
-        if (symbol == null)
-            symbol = symbolTable.getField(varName); // Check global variables
+        symbol = (symbol == null) ? symbolTable.getField(varName) : null; // Check global variables
         if(symbol == null)
             return null;
-        else
-            return symbol.getType().getName();
+        return symbol.getType();
     }
 
     private Boolean isOperator(String nodeKind) {
