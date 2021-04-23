@@ -32,6 +32,25 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return null;
     }
 
+    public Type getExpressionType(JmmNode node) {
+        switch (node.getKind()) {
+        case "Int":
+            return new Type("int", false);
+        case "True":
+        case "False":
+            return new Type("boolean", false);
+        case "Expression":
+            if (node.getNumChildren() == 1) {
+                return getExpressionType(node.getChildren().get(0));
+            }
+            break;
+        case "Add":
+            return new Type("int", false);
+        default:
+            break;
+        }
+    }
+
     private Boolean verifyType(JmmNode node, String signature, List<Report> reports) {
         List<JmmNode> children = node.getChildren();
         JmmNode leftChild = children.get(0);
