@@ -33,9 +33,14 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     }
 
     public Type getExpressionType(JmmNode node) {
+        // TODO: Dot, New, Var
+
         switch (node.getKind()) {
         case "Int":
             return new Type("int", false);
+        case "And":
+        case "LessThan":
+        case "Not":
         case "True":
         case "False":
             return new Type("boolean", false);
@@ -45,7 +50,12 @@ class ArithmeticOpTypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             }
             break;
         case "Add":
+        case "Sub":
+        case "Mul":
+        case "Div":
             return new Type("int", false);
+        case "This":
+            return new Type(symbolTable.getClassName(), false);
         default:
             break;
         }
