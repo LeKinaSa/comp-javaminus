@@ -41,33 +41,8 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
         return null;
     }
 
-    private String getMethodSignature(JmmNode node) {
-        String signature = node.get("name");
-
-        if (signature.equals("main"))
-            signature += "(String[])";
-        else {
-            Optional<JmmNode> optional = node.getChildren().stream().filter(child -> child.getKind().equals("Params")).findFirst();
-
-            signature += "(";
-
-            if (optional.isPresent()) {
-                JmmNode paramsNode = optional.get();
-                List<String> types = new ArrayList<>();
-
-                for (JmmNode param : paramsNode.getChildren()) {
-                    types.add(param.get("type"));
-                }
-
-                signature += String.join(", ", types);
-            }
-            signature += ")";
-        }
-         return signature;
-    }
-
     private Object visitMethod(JmmNode node, List<Report> reports) {
-        String signature = getMethodSignature(node);
+        String signature = Utils.generateMethodSignature(node);
         String name = node.get("name");
         Type returnType;
 
@@ -76,7 +51,12 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
         }
         else {
             String returnTypeName = node.get("returnType");
-            returnType = new Type(returnTypeName, returnTypeName.endsWith("[]"));
+            boolean isArray = returnTypeName.endsWith("[]");
+            if (isArray) {
+                returnTypeName = returnTypeName.substring(0, returnTypeName.length() - 2);
+            }
+
+            returnType = new Type(returnTypeName, isArray);
         }
 
         if (!symbolTable.methods.add(signature)) {
@@ -90,7 +70,9 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitVariableDeclaration(JmmNode node, List<Report> reports) {
         String name = node.get("name"), typeName = node.get("type");
-        Type type = new Type(typeName, typeName.endsWith("[]"));
+        boolean isArray = typeName.endsWith("[]");
+        
+        Type type = new Type(isArray ? typeName.substring(0, typeName.length() - 2) : typeName, isArray);
         Symbol symbol = new Symbol(type, name);
 
         if (node.getParent().getKind().equals("Class")) { // Class field
@@ -104,7 +86,7 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
             Optional<JmmNode> methodNode = node.getAncestor("Method");
 
             if (methodNode.isPresent()) {
-                String signature = getMethodSignature(methodNode.get());
+                String signature = Utils.generateMethodSignature(methodNode.get());
 
                 if (!symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol)
                         || symbolTable.fields.contains(symbol)
@@ -121,12 +103,14 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitParameter(JmmNode node, List<Report> reports) {
         String name = node.get("name"), typeName = node.get("type");
-        Type type = new Type(typeName, typeName.endsWith("[]"));
+        boolean isArray = typeName.endsWith("[]");
+
+        Type type = new Type(isArray ? typeName.substring(0, typeName.length() - 2) : typeName, isArray);
         Symbol symbol = new Symbol(type, name);
         Optional<JmmNode> methodNode = node.getAncestor("Method");
 
         if (methodNode.isPresent()) {
-            String signature = getMethodSignature(methodNode.get());
+            String signature = Utils.generateMethodSignature(methodNode.get());
 
             if (!symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol)
                     || symbolTable.fields.contains(symbol)) {

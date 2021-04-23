@@ -1,17 +1,13 @@
 
+import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmAnalysis;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
-import pt.up.fe.comp.jmm.ast.examples.ExamplePostorderVisitor;
-import pt.up.fe.comp.jmm.ast.examples.ExamplePreorderVisitor;
-import pt.up.fe.comp.jmm.ast.examples.ExamplePrintVariables;
-import pt.up.fe.comp.jmm.ast.examples.ExampleVisitor;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -34,15 +30,17 @@ public class AnalysisStage implements JmmAnalysis {
         }
 
         JmmNode node = parserResult.getRootNode();
+        List<Report> reports = new ArrayList<>();
 
         // Get Symbol Table
         JMMSymbolTable symbolTable = new JMMSymbolTable();
         SymbolTableVisitor symbolTableVisitor = new SymbolTableVisitor(symbolTable);
-        symbolTableVisitor.visit(node);
+        symbolTableVisitor.visit(node, reports);
 
         // Arithmetic Visitor - STILL NEED TO HANDLE REPORTS!
-        ArithmeticOpTypeVisitor arithmeticVisitor = new ArithmeticOpTypeVisitor(symbolTable);
-        arithmeticVisitor.visit(node);
+        
+        TypeVisitor arithmeticVisitor = new TypeVisitor(symbolTable);
+        arithmeticVisitor.visit(node, reports);
 
 
         /*System.out.println("Dump tree with Visitor where you control tree traversal");
@@ -65,9 +63,6 @@ public class AnalysisStage implements JmmAnalysis {
         var varPrinter = new ExamplePrintVariables("Variable", "name", "line");
         varPrinter.visit(node, null);*/
 
-        // No Symbol Table being calculated yet
-        return new JmmSemanticsResult(parserResult, null, new ArrayList<>());
-
+        return new JmmSemanticsResult(parserResult, symbolTable, reports);
     }
-
 }

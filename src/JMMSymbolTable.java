@@ -61,11 +61,25 @@ public class JMMSymbolTable implements SymbolTable {
     }
 
     public Symbol getField(String fieldName) {
-        for(Symbol symbol: this.fields) {
-            if(symbol.getName().equals(fieldName))
+        for (Symbol symbol: this.fields) {
+            if (symbol.getName().equals(fieldName)) {
                 return symbol;
+            }
         }
 
         return null;
+    }
+
+    public Symbol getSymbol(String methodSignature, String name) {
+        Symbol symbol = null;
+
+        if (methodSymbolTableMap.containsKey(methodSignature)) {
+            symbol = methodSymbolTableMap.get(methodSignature).getLocalVariable(name); // Check method local variables
+            symbol = (symbol == null) ? methodSymbolTableMap.get(methodSignature).getParameter(name) : symbol; // Check method parameters
+        }
+
+        symbol = (symbol == null) ? getField(name) : symbol; // Check global variables
+
+        return symbol;
     }
 }
