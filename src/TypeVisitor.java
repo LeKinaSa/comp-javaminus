@@ -13,6 +13,8 @@ import java.util.*;
 class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
 
+    private final Set<String> initializedVariables = new HashSet<>();
+
     public TypeVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
 
@@ -20,13 +22,135 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         addVisit("Sub", this::visitArithmeticExpression);
         addVisit("Mul", this::visitArithmeticExpression);
         addVisit("Div", this::visitArithmeticExpression);
+        addVisit("LessThan", this::visitArithmeticExpression);
+
+        addVisit("And", this::visitBooleanExpression);
+        addVisit("Not", this::visitBooleanExpression);
+        addVisit("Assign", this::visitAssignment);
+
+        addVisit("Var", this::visitVariable);
     }
 
     private Object visitArithmeticExpression(JmmNode node, List<Report> reports) {
         Optional<JmmNode> methodNode = node.getAncestor("Method");
-        if(methodNode.isPresent()) {
-            String signature = getMethodSignature(methodNode.get());
-            verifyType(node, signature, reports);
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        final Type intType = new Type("int", false);
+
+        JmmNode leftChild = node.getChildren().get(0);
+        JmmNode rightChild = node.getChildren().get(1);
+
+        Type leftType = getExpressionType(leftChild, signature);
+        Type rightType = getExpressionType(rightChild, signature);
+
+        System.out.println("Left type: " + leftType);
+        System.out.println("Right type: " + rightType);
+
+        // Childs (Both variables with the same type (int))
+        if (!intType.equals(leftType)) {
+            String message = "Invalid type for operation " + node.getKind();
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(leftChild.get("line")), Integer.parseInt(leftChild.get("col")), message));
+        }
+
+        if (!intType.equals(rightType)) {
+            String message = "Invalid type for operation " + node.getKind();
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
+        }
+
+        return null;
+    }
+
+    private Object visitBooleanExpression(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        final Type booleanType = new Type("boolean", false);
+
+        JmmNode firstChild = node.getChildren().get(0);
+        Type firstType = getExpressionType(firstChild, signature);
+
+        if (!booleanType.equals(firstType)) {
+            String message = "Invalid type for operation " + node.getKind();
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(firstChild.get("line")), Integer.parseInt(firstChild.get("col")), message));
+        }
+        
+        if (node.getNumChildren() == 2) { // And
+            JmmNode secondChild = node.getChildren().get(1);
+            Type secondType = getExpressionType(secondChild, signature);
+
+            if (!booleanType.equals(secondType)) {
+                String message = "Invalid type for operation " + node.getKind();
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(secondChild.get("line")), Integer.parseInt(secondChild.get("col")), message));
+            }
+        }
+
+        return null;
+    }
+
+    public Object visitAssignment(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        JmmNode leftChild = node.getChildren().get(0);
+        JmmNode rightChild = node.getChildren().get(1);
+
+        Type leftType = getExpressionType(leftChild, signature);
+        Type rightType = getExpressionType(rightChild, signature);
+
+        initializedVariables.add(leftChild.get("name"));
+
+        if (leftType == null || !leftType.equals(rightType)) {
+            String message = "Type mismatch in assignment";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
+        return null;
+    }
+
+    public Object visitVariable(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+
+        String signature;
+        if (methodNode.isPresent()) {
+            signature = Utils.generateMethodSignature(methodNode.get());
+        }
+        else {
+            return null;
+        }
+
+        String name = node.get("name");
+        Symbol symbol = symbolTable.getSymbol(signature, name);
+
+        if (symbol == null) {
+            String message = "Error: symbol " + name + " is undefined.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+            return null;
+        }
+
+        if (!initializedVariables.contains(name)) {
+            String message = "Error: variable " + name + " was used without being initialized.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
         return null;
@@ -88,32 +212,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return null;
     }
 
-    private Boolean verifyType(JmmNode node, String signature, List<Report> reports) {
-        JmmNode leftChild = node.getChildren().get(0);
-        JmmNode rightChild = node.getChildren().get(1);
-
-        Type leftType = getExpressionType(leftChild, signature);
-        Type rightType = getExpressionType(rightChild, signature);
-
-        Type intType = new Type("int", false);
-
-        System.out.println("Left type: " + leftType);
-        System.out.println("Right type: " + rightType);
-
-        // Childs (Both variables with the same type (int))
-        if (!intType.equals(leftType)) {
-            String message = "Invalid type for operation " + node.getKind();
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(leftChild.get("line")), Integer.parseInt(leftChild.get("col")), message));
-        }
-
-        if (!intType.equals(rightType)) {
-            String message = "Invalid type for operation " + node.getKind();
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
-        }
-
-        return true;
-    }
-
     private String getNodeFunctionSignature(String methodSignature, JmmNode node) {
         String signature = node.get("name");
 
@@ -150,49 +248,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return null;
     }
 
-    private Type getVariableType(String signature, String varName) {
-        // TODO: refactor?
-        Symbol symbol = null;
-
-        if (symbolTable.methodSymbolTableMap.containsKey(signature)) {
-            symbol = (symbol == null) ?  symbolTable.methodSymbolTableMap.get(signature).getLocalVariable(varName) : null; // Check Method Local Variables
-            symbol = (symbol == null) ?  symbolTable.methodSymbolTableMap.get(signature).getParameter(varName) : null; // Check Method Parameters
-        }
-
-        symbol = (symbol == null) ? symbolTable.getField(varName) : null; // Check global variables
-
-        if (symbol == null)
-            return null;
+    private Type getVariableType(String signature, String name) {
+        Symbol symbol = symbolTable.getSymbol(signature, name);
+        if (symbol == null) return null;
         return symbol.getType();
-    }
-
-    private Boolean isOperator(String nodeKind) {
-        return nodeKind.equals("Add") || nodeKind.equals("Sub") || nodeKind.equals("Mul") || nodeKind.equals("Div");
-    }
-
-    // TODO:Needs refactoring
-    private String getMethodSignature(JmmNode node) {
-        String signature = node.get("name");
-
-        if (signature.equals("main"))
-            signature += "(String[])";
-        else {
-            Optional<JmmNode> optional = node.getChildren().stream().filter(child -> child.getKind().equals("Params")).findFirst();
-
-            signature += "(";
-
-            if (optional.isPresent()) {
-                JmmNode paramsNode = optional.get();
-                List<String> types = new ArrayList<>();
-
-                for (JmmNode param : paramsNode.getChildren()) {
-                    types.add(param.get("type"));
-                }
-
-                signature += String.join(", ", types);
-            }
-            signature += ")";
-        }
-        return signature;
     }
 }
