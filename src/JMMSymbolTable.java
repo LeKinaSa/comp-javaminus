@@ -12,6 +12,10 @@ public class JMMSymbolTable implements SymbolTable {
     public final Set<String> methods = new HashSet<>();
     public final Map<String, MethodSymbolTable> methodSymbolTableMap = new HashMap<>();
 
+    public Map<String, MethodSymbolTable> getMethodsSymbolTable() {
+        return methodSymbolTableMap;
+    }
+
     @Override
     public List<String> getImports() {
         return new ArrayList<>(imports);

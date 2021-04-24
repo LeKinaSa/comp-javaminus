@@ -33,7 +33,6 @@ public class Main implements JmmParser {
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
-		// String jmmCode = new String((new FileInputStream("src/HelloWorld.jmm")).readAllBytes());
 		String jmmCode = new String((new FileInputStream(args[0])).readAllBytes());
 		JmmParserResult parserResult = main.parse(jmmCode);
 		// System.out.println(parserResult.toJson());

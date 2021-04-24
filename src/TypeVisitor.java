@@ -185,7 +185,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         Symbol symbol = symbolTable.getSymbol(signature, name);
 
         JmmNode siblingNode = node.getParent().getChildren().get(1);
-        if(!siblingNode.getKind().equals("Func")) { // TO DO: Solve this sibling search? Can we do: importedClasses.contains(name) inside "if" instead?
+        if(!siblingNode.getKind().equals("Func")) {// TO DO: Solve this sibling search? Can we do: importedClasses.contains(name) inside "if" instead?
             if (symbol == null) {
                 String message = "Error: symbol " + name + " is undefined.";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
@@ -291,23 +291,36 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             if(leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
                 Type varType = getVariableType(signature, leftChild.get("name"));
                 if(varType.getName().equals(className)) { // Same class
+                    // TO DO: REFACTOR
                     if (extendsName == null) {
                         String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
-                        if (!symbolTable.methodSymbolTableMap.containsKey(calledFuncSignature)) {
+                        String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
+                        if (!checkMethodExistence(methodName)) {
                             String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
                             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
+                        } else {
+                            List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
+                            getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                         }
                     }
                 }
             } else if(leftChild.getKind().equals("This")) {
                 if (extendsName == null) {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
-                    if (!symbolTable.methodSymbolTableMap.containsKey(calledFuncSignature)) {
+                    String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
+                    // TO DO: REFACTOR
+                    if (!checkMethodExistence(methodName)) {
                         String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
                         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                     }
+                    else {
+                        List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
+                        getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                    }
                 }
             } else { // Imported class
+                if(leftType != null && leftType.getName().equals(symbolTable.getClassName()))
+                    return null;
                 if (!importedClasses.contains(leftChild.get("name"))) {
                     String message = "Class \"" + leftChild.get("name") + "\" not included in imports.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
@@ -318,6 +331,64 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return null;
     }
 
+    public Boolean checkMethodExistence(String methodName) {
+        for (String methodSignature : symbolTable.getMethodsSymbolTable().keySet()) {
+            String name = methodSignature.substring(0, methodSignature.indexOf("(") + 1);
+            if(name.equals(methodName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public String getCalledMethodSignature(String calledFuncSignature, String methodName, List<String> passedArgs, JmmNode funcNode, List<Report> reports) {
+        int numSupposedMethodArgs = 0;
+        int numCommonArgs = 0;
+
+        int numberOfPassedArgs = passedArgs.size();
+        for(String methodSignature: symbolTable.getMethodsSymbolTable().keySet()) {
+            String name = methodSignature.substring(0, methodSignature.indexOf("(") + 1);
+
+            if(calledFuncSignature.equals(methodSignature))
+                return null;
+            else if(name.equals(methodName)) {
+                List<String> methodArgs = getFunctionPassedArguments(methodSignature);
+                int numberOfMethodArgs = methodArgs.size();
+                int numArgs = Math.min(numberOfPassedArgs, numberOfMethodArgs);
+                int auxNumCommonArgs = 0;
+
+                for(int i = 0; i < numArgs; i++) {
+                    if(passedArgs.get(i).equals(methodArgs.get(i)))
+                        auxNumCommonArgs++;
+                }
+
+                if(auxNumCommonArgs > numCommonArgs || numCommonArgs == 0) {
+                    numCommonArgs = auxNumCommonArgs;
+                    numSupposedMethodArgs = numberOfMethodArgs;
+                }
+            }
+        }
+
+        String message;
+        if(numCommonArgs < numberOfPassedArgs && numSupposedMethodArgs == numberOfPassedArgs) {
+            message = "Incorrect parameter types in method \"" + methodName + "\".";
+        } else
+            message = "Incorrect number of arguments in method \"" + methodName + "\".";
+
+        reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(funcNode.get("line")), Integer.parseInt(funcNode.get("col")), message));
+
+        return null;
+    }
+
+    public List<String> getFunctionPassedArguments(String methodSignature) {
+        String argsWithCommas = methodSignature.substring(methodSignature.indexOf("(") + 1, methodSignature.indexOf(")"));
+        List<String> passedArgs = Arrays.asList(argsWithCommas.split(", "));
+        return passedArgs;
+    }
+
+    /*public int getNumberOfArguments(String methodSignature) { // Number of commas is the number of arguments
+        return methodSignature.length() - methodSignature.replace(",", "").length() + 1;
+    }*/
 
 
     public Type getExpressionType(JmmNode node, String methodSignature) {
@@ -392,10 +463,12 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                 signature += "(";
 
                 for (JmmNode expressionNode: expressionNodes) {
-                    String varName = expressionNode.getChildren().get(0).get("name");
-                    Type varType = getVariableType(methodSignature, varName);
+                    Type varType = getExpressionType(expressionNode.getChildren().get(0), methodSignature);
+                    // String varName = expressionNode.getChildren().get(0).get("name");
+                    // Type varType = getVariableType(methodSignature, varName);
 
-                    types.add((varType.isArray()) ? varType.getName().concat("[]") : varType.getName());
+                    if(varType != null)
+                        types.add((varType.isArray()) ? varType.getName().concat("[]") : varType.getName());
                 }
 
                 signature += String.join(", ", types) + ")";
