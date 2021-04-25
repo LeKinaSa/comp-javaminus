@@ -3,9 +3,12 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 
+import org.specs.comp.ollir.ClassUnit;
+import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -35,7 +38,18 @@ public class Main implements JmmParser {
 			return semanticsResult;
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new JmmSemanticsResult((JmmParserResult) null, null, Reports.getReports());
+			return new JmmSemanticsResult((JmmNode) null, null, Reports.getReports());
+		}
+	}
+
+	public OllirResult generateOllir(JmmSemanticsResult semanticsResult) {
+		try {
+			OllirGenerationState ollirGenerationState = new OllirGenerationState();
+			OllirResult ollirResult = ollirGenerationState.generateOllir(semanticsResult);
+			return ollirResult;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new OllirResult((ClassUnit) null, null, Reports.getReports());
 		}
 	}
 
@@ -47,6 +61,8 @@ public class Main implements JmmParser {
 		// System.out.println(parserResult.toJson());
 
 		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
+
+		OllirResult ollirResult = main.generateOllir(semanticsResult);
     }
 
 
