@@ -3,11 +3,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 
-import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
-import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -30,6 +28,17 @@ public class Main implements JmmParser {
 		}
 	}
 
+	public JmmSemanticsResult analyse(JmmParserResult parserResult) {
+		try {
+			AnalysisStage analysisStage = new AnalysisStage();
+			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
+			return semanticsResult;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new JmmSemanticsResult((JmmParserResult) null, null, Reports.getReports());
+		}
+	}
+
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
@@ -37,14 +46,7 @@ public class Main implements JmmParser {
 		JmmParserResult parserResult = main.parse(jmmCode);
 		// System.out.println(parserResult.toJson());
 
-		try {
-			AnalysisStage analysisStage = new AnalysisStage();
-			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-
+		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
     }
 
 
