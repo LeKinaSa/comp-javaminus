@@ -298,9 +298,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String extendsName = symbolTable.getSuper();
             String funcName = rightChild.get("name");
 
-            if(leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
+            if (leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
                 Type varType = getVariableType(signature, leftChild.get("name"));
-                if(varType.getName().equals(className)) { // Same class
+                if (varType.getName().equals(className)) { // Same class
                     // TO DO: REFACTOR
                     if (extendsName == null) {
                         String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
@@ -314,7 +314,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                         }
                     }
                 }
-            } else if(leftChild.getKind().equals("This")) {
+            } else if (leftChild.getKind().equals("This")) {
                 if (extendsName == null) {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
@@ -322,11 +322,21 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     if (!checkMethodExistence(methodName)) {
                         String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
-                    }
-                    else {
+                    } else {
                         List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                         getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                     }
+                }
+            } else if (leftChild.getKind().equals("NewInstance") && leftChild.get("class").equals(symbolTable.getClassName())) {
+                String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
+                // TO DO: REFACTOR
+                if (!checkMethodExistence(methodName)) {
+                    String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
+                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
+                } else {
+                    List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
+                    getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
             } else { // Imported class or new Class() (with same filename)
                 if(leftType != null && leftType.getName().equals(symbolTable.getClassName())) {
