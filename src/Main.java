@@ -30,6 +30,17 @@ public class Main implements JmmParser {
 		}
 	}
 
+	public JmmSemanticsResult analyse(JmmParserResult parserResult) {
+		try {
+			AnalysisStage analysisStage = new AnalysisStage();
+			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
+			return semanticsResult;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return new JmmSemanticsResult((JmmNode) null, null, Reports.getReports());
+		}
+	}
+
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
@@ -37,14 +48,7 @@ public class Main implements JmmParser {
 		JmmParserResult parserResult = main.parse(jmmCode);
 		// System.out.println(parserResult.toJson());
 
-		try {
-			AnalysisStage analysisStage = new AnalysisStage();
-			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-
-
+		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
     }
 
 
