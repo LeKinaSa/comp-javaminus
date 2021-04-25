@@ -184,8 +184,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         String name = node.get("name");
         Symbol symbol = symbolTable.getSymbol(signature, name);
 
-        JmmNode siblingNode = node.getParent().getChildren().get(1);
-        if(!siblingNode.getKind().equals("Func")) {// TO DO: Solve this sibling search? Can we do: importedClasses.contains(name) inside "if" instead?
+        if(!importedClasses.contains(name)) { // TO DO: Solve this sibling search? Can we do: importedClasses.contains(name) inside "if" instead?
             if (symbol == null) {
                 String message = "Error: symbol " + name + " is undefined.";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
@@ -294,7 +293,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     // TO DO: REFACTOR
                     if (extendsName == null) {
                         String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
-                        String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
+                        String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                         if (!checkMethodExistence(methodName)) {
                             String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
                             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
@@ -307,7 +306,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             } else if(leftChild.getKind().equals("This")) {
                 if (extendsName == null) {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
-                    String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
+                    String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                     // TO DO: REFACTOR
                     if (!checkMethodExistence(methodName)) {
                         String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
@@ -333,7 +332,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
     public Boolean checkMethodExistence(String methodName) {
         for (String methodSignature : symbolTable.getMethodsSymbolTable().keySet()) {
-            String name = methodSignature.substring(0, methodSignature.indexOf("(") + 1);
+            String name = methodSignature.substring(0, methodSignature.indexOf("("));
             if(name.equals(methodName)) {
                 return true;
             }
@@ -347,7 +346,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         int numberOfPassedArgs = passedArgs.size();
         for(String methodSignature: symbolTable.getMethodsSymbolTable().keySet()) {
-            String name = methodSignature.substring(0, methodSignature.indexOf("(") + 1);
+            String name = methodSignature.substring(0, methodSignature.indexOf("("));
 
             if(calledFuncSignature.equals(methodSignature))
                 return null;

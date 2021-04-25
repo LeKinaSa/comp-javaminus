@@ -21,6 +21,7 @@ public class SucceedTest {
         AnalysisStage analysisStage = new AnalysisStage();
         JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
 
+        System.out.println(semanticsResult.getReports());
         TestUtils.noErrors(semanticsResult.getReports());
     }
 
