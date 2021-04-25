@@ -183,18 +183,27 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         String name = node.get("name");
         Symbol symbol = symbolTable.getSymbol(signature, name);
 
-        if(!importedClasses.contains(name)) { // TO DO: Solve this sibling search? Can we do: importedClasses.contains(name) inside "if" instead?
-            if (symbol == null) {
-                String message = "Error: symbol " + name + " is undefined.";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        JmmNode siblingNode = node.getParent();
+        JmmNode rightChild = siblingNode.getChildren().get(1);
+        if(rightChild.getKind().equals("Func")) { // Don't verify imported variables
+            Type varType = getVariableType(signature, name);
+
+            if(varType == null) {
                 return null;
             }
-
-            if (!initializedVariables.contains(name)) {
-                String message = "Error: variable " + name + " was used without being initialized.";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
-            }
         }
+
+        if (symbol == null) {
+            String message = "Error: symbol " + name + " is undefined.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+            return null;
+        }
+
+        if (!initializedVariables.contains(name)) {
+            String message = "Error: variable " + name + " was used without being initialized.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
 
         return null;
     }
@@ -426,7 +435,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     return new Type("int", false);
                 } else if (rightChild.getKind().equals("Func")) {
                     // Var is same class or This -> get type | else assume int (unknown class)
-                    if(leftChild.getKind().equals("This") || leftChild.get("name").equals(symbolTable.getClassName()))
+                    if(leftChild.getKind().equals("NewInstance") || leftChild.getKind().equals("This") || leftChild.get("name").equals(symbolTable.getClassName()))
                         return getExpressionType(rightChild, methodSignature);
                     else
                         return new Type("int", false);
