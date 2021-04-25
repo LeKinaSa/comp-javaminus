@@ -190,6 +190,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
             if(varType == null) {
                 return null;
+            } else if (varType.getName().equals("int") || varType.getName().equals("boolean")) {
+                String message = "Literal \"" + name + "\" cannot call a method.";
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             }
         }
 
@@ -325,11 +328,15 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                         getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                     }
                 }
-            } else { // Imported class
-                if(leftType != null && leftType.getName().equals(symbolTable.getClassName()))
-                    return null;
-                if (!importedClasses.contains(leftChild.get("name"))) {
-                    String message = "Class \"" + leftChild.get("name") + "\" not included in imports.";
+            } else { // Imported class or new Class() (with same filename)
+                if(leftType != null && leftType.getName().equals(symbolTable.getClassName())) {
+                    String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                    String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
+                    List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
+                    getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                }
+                else if(leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !importedClasses.contains(leftChild.get("name"))) {
+                    String message = "Class \"" + ((leftChild.getKind().equals("NewInstance")) ? leftChild.get("class") : leftChild.get("name")) + "\" not included in imports.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                 }
             }
