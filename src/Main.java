@@ -3,11 +3,9 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 
-import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
-import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
@@ -37,7 +35,7 @@ public class Main implements JmmParser {
 			return semanticsResult;
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new JmmSemanticsResult((JmmNode) null, null, Reports.getReports());
+			return new JmmSemanticsResult((JmmParserResult) null, null, Reports.getReports());
 		}
 	}
 

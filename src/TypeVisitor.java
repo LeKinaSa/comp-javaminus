@@ -1,5 +1,4 @@
 
-import jdk.swing.interop.SwingInterOpUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.Type;
@@ -296,7 +295,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                         String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                         String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
                         if (!checkMethodExistence(methodName)) {
-                            String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
+                            String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                         } else {
                             List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
@@ -310,7 +309,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("(") + 1);
                     // TO DO: REFACTOR
                     if (!checkMethodExistence(methodName)) {
-                        String message = "Invoqued method \"" + funcName + "\" does not exist inside class.";
+                        String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                     }
                     else {
