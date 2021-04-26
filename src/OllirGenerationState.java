@@ -27,11 +27,14 @@ public class OllirGenerationState {
         JmmNode node = semanticsResult.getRootNode();
         List<Report> reports = new ArrayList<>();
 
-        StringBuilder ollirCode = new StringBuilder(); // TODO: string or string builder?
+        StringBuilder ollirBuilder = new StringBuilder();
 
-        OllirVisitor ollirVisitor = new OllirVisitor(ollirCode);
+        OllirVisitor ollirVisitor = new OllirVisitor(ollirBuilder, semanticsResult.getSymbolTable());
         ollirVisitor.visit(node, reports);
 
-        return new OllirResult(semanticsResult, ollirCode.toString(), reports);
+        // FIXME: Debug, remove later
+        System.out.println(ollirBuilder.toString());
+
+        return new OllirResult(semanticsResult, ollirBuilder.toString(), reports);
     }
 }

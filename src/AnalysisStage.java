@@ -39,9 +39,8 @@ public class AnalysisStage implements JmmAnalysis {
 
         // Arithmetic Visitor - STILL NEED TO HANDLE REPORTS!
         
-        TypeVisitor arithmeticVisitor = new TypeVisitor(symbolTable);
-        arithmeticVisitor.visit(node, reports);
-
+        TypeVisitor typeVisitor = new TypeVisitor(symbolTable);
+        typeVisitor.visit(node, reports);
 
         /*System.out.println("Dump tree with Visitor where you control tree traversal");
         ExampleVisitor visitor = new ExampleVisitor("Identifier", "id");

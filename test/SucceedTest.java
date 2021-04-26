@@ -9,6 +9,7 @@ import java.io.StringReader;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.specs.util.SpecsIo;
 
 public class SucceedTest {
@@ -21,8 +22,11 @@ public class SucceedTest {
         AnalysisStage analysisStage = new AnalysisStage();
         JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
 
-        System.out.println(semanticsResult.getReports());
+        System.out.println("Semantic reports: " + semanticsResult.getReports());
         TestUtils.noErrors(semanticsResult.getReports());
+
+        OllirGenerationState ollirGenerationState = new OllirGenerationState();
+        OllirResult ollirResult = ollirGenerationState.generateOllir(semanticsResult);
     }
 
     @Test

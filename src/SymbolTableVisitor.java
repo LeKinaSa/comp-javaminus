@@ -50,7 +50,13 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
         }
 
-        symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, new HashSet<>(), new HashSet<>()));
+        Set<Symbol> parameters = new LinkedHashSet<>();
+
+        if (node.get("name").equals("main")) {
+            parameters.add(new Symbol(new Type("String", true), node.get("cmdArgsName")));
+        }
+
+        symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, parameters, new LinkedHashSet<>()));
         return null;
     }
 
