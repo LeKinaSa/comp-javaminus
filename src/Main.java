@@ -58,12 +58,9 @@ public class Main implements JmmParser {
 
 		String jmmCode = new String((new FileInputStream(args[0])).readAllBytes());
 		JmmParserResult parserResult = main.parse(jmmCode);
-		// System.out.println(parserResult.toJson());
 
 		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
 
 		OllirResult ollirResult = main.generateOllir(semanticsResult);
     }
-
-
 }

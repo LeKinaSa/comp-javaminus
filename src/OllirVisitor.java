@@ -60,7 +60,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     }
 
     public String defaultVisit(JmmNode node, List<Report> reports) {
-        // Default visit is a simple postorder visit
+        // Default visit is a simple post-order visit
         for (JmmNode child : node.getChildren()) {
             visit(child, reports);
         }

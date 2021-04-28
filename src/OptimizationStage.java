@@ -49,6 +49,7 @@ public class OptimizationStage implements JmmOptimization {
         OllirVisitor ollirVisitor = new OllirVisitor(ollirCode, semanticsResult.getSymbolTable());
         ollirVisitor.visit(node, reports);
 
+        System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
         return new OllirResult(semanticsResult, ollirCode.toString(), reports);
     }
 
