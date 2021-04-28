@@ -44,8 +44,8 @@ public class Main implements JmmParser {
 
 	public OllirResult generateOllir(JmmSemanticsResult semanticsResult) {
 		try {
-			OllirGenerationState ollirGenerationState = new OllirGenerationState();
-			OllirResult ollirResult = ollirGenerationState.generateOllir(semanticsResult);
+			OptimizationStage optimizationStage = new OptimizationStage();
+			OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
 			return ollirResult;
 		} catch (Exception e) {
 			e.printStackTrace();
