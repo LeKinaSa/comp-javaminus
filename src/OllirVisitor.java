@@ -6,20 +6,34 @@ import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.report.Report;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     private final StringBuilder ollirBuilder;
-    private final SymbolTable symbolTable;
+    private final JMMSymbolTable symbolTable;
     private final StringBuilder tabs = new StringBuilder(); // Improves OLLIR code formatting
+    private final Map<String, Integer> tempVariablesMap = new HashMap<>();
+
+    private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/");
 
     public OllirVisitor(StringBuilder ollirBuilder, SymbolTable symbolTable) {
         this.ollirBuilder = ollirBuilder;
-        this.symbolTable = symbolTable;
+        this.symbolTable = (JMMSymbolTable) symbolTable;
 
         addVisit("Class", this::visitClass);
         addVisit("Method", this::visitMethod);
+        addVisit("Expression", this::visitExpression);
+
+        addVisit("Add", this::visitArithmeticOp);
+        addVisit("Sub", this::visitArithmeticOp);
+        addVisit("Mul", this::visitArithmeticOp);
+        addVisit("Div", this::visitArithmeticOp);
+
+        addVisit("Int", this::visitInt);
+        addVisit("Var", this::visitVariable);
+        addVisit("Assign", this::visitAssignment);
+        addVisit("Statement", this::visitStatement);
+
         setDefaultVisit(this::defaultVisit);
     }
 
@@ -118,10 +132,96 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         ollirBuilder.append(String.join(", ", parameterStrings)).append(").").append(convertType(returnType)).append(" {\n");
         addTab();
 
+        tempVariablesMap.put(signature, 0);
         // TODO: Visit the body of the method
+        visit(node.getChildren().get(0));
 
         removeTab();
         lineWithTabs().append("}\n");
+
+        return null;
+    }
+
+    public String visitExpression(JmmNode node, List<Report> reports) {
+        return visit(node.getChildren().get(0));
+    }
+
+    public String visitArithmeticOp(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode leftChild = node.getChildren().get(0), rightChild = node.getChildren().get(1);
+        StringBuilder arithmeticBuilder = new StringBuilder();
+
+        arithmeticBuilder.append(visit(leftChild));
+        arithmeticBuilder.append(" ").append(arithmeticOpMap.get(node.getKind())).append(".i32 ");
+        arithmeticBuilder.append(visit(rightChild));
+
+        if (node.getParent().getKind().equals("Expression") || node.getParent().getKind().equals("Assign")) {
+            return arithmeticBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
+
+        lineWithTabs().append(tempVar).append(" :=.i32 ").append(arithmeticBuilder).append(";\n");
+
+        return tempVar;
+    }
+
+    public String visitInt(JmmNode node, List<Report> reports) {
+        return node.get("value") + ".i32";
+    }
+
+    public String visitVariable(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+        String name = node.get("name");
+
+        List<Symbol> localVariables = symbolTable.getLocalVariables(signature);
+        Optional<Symbol> optional = localVariables.stream().filter(s -> s.getName().equals(name)).findFirst();
+
+        if (optional.isPresent()) {
+            Symbol symbol = optional.get();
+            return symbol.getName() + "." + convertType(symbol.getType());
+        }
+
+        List<Symbol> parameters = symbolTable.getParameters(signature);
+
+        for (int i = 0; i < parameters.size(); ++i) {
+            Symbol symbol = parameters.get(i);
+            if (symbol.getName().equals(name)) {
+                return "$" + i + "." + symbol.getName() + "." + convertType(symbol.getType());
+            }
+        }
+
+        // TODO: fields
+
+        // Should never be reached, this should be caught during semantic analysis
+        return null;
+    }
+
+    public String visitAssignment(JmmNode node, List<Report> reports) {
+        // TODO: Array assignments
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+        JmmNode variable = node.getChildren().get(0), expression = node.getChildren().get(1);
+
+        if (variable.getKind().equals("Var")) {
+            Type type = symbolTable.getSymbol(signature, variable.get("name")).getType();
+            return visit(variable) + " :=." + convertType(type) + " " + visit(expression);
+        }
+
+        return null;
+    }
+
+    public String visitStatement(JmmNode node, List<Report> reports) {
+        if (node.getNumChildren() > 1) {
+            for (JmmNode child : node.getChildren()) {
+                visit(child, reports);
+            }
+        }
+
+        // TODO: If and While statements
+        String expressionResult = visit(node.getChildren().get(0));
+        lineWithTabs().append(expressionResult).append(";\n");
 
         return null;
     }

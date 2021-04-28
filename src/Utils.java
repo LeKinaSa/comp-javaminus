@@ -51,4 +51,9 @@ public class Utils {
 
         return signature;
     }
+
+    public static String generateMethodSignatureFromChildNode(JmmNode node) {
+        Optional<JmmNode> methodNode = node.getAncestor("Method");
+        return methodNode.map(Utils::generateMethodSignature).orElse(null);
+    }
 }

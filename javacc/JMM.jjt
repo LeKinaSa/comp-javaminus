@@ -229,7 +229,7 @@ void ExpressionNot() #void : {} {
 }
 
 void Primary() #void : { Token t; } {
-    <LPAR> Expression() <RPAR> PrimaryL()
+    <LPAR> ExpressionAssign() <RPAR> PrimaryL()
     | t = <INTEGER_LITERAL> { jjtThis.put("value", t.image); } #Int PrimaryL()
     | t = <IDENTIFIER> { jjtThis.put("name", t.image); } #Var PrimaryL()
     | <THIS> #This PrimaryL()
