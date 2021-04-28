@@ -15,6 +15,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     private final Map<String, Integer> tempVariablesMap = new HashMap<>();
 
     private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/");
+    private static final Map<String, String> booleanOpMap = Map.of("LessThan", "<", "And", "&&", "Not", "!");
 
     public OllirVisitor(StringBuilder ollirBuilder, SymbolTable symbolTable) {
         this.ollirBuilder = ollirBuilder;
@@ -29,7 +30,13 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("Mul", this::visitArithmeticOp);
         addVisit("Div", this::visitArithmeticOp);
 
+        addVisit("LessThan", this::visitBooleanOp);
+        addVisit("And", this::visitBooleanOp);
+        addVisit("Not", this::visitBooleanOp);
+
         addVisit("Int", this::visitInt);
+        addVisit("False", this::visitBool);
+        addVisit("True", this::visitBool);
         addVisit("Var", this::visitVariable);
         addVisit("Assign", this::visitAssignment);
         addVisit("Statement", this::visitStatement);
@@ -168,8 +175,45 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         return tempVar;
     }
 
+    public String visitBooleanOp(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode leftChild, rightChild;
+        if (node.getChildren().size() > 1) { // LessThan And
+            leftChild = node.getChildren().get(0);
+            rightChild = node.getChildren().get(1);
+        }
+        else { // Not
+            leftChild = null;
+            rightChild = node.getChildren().get(0);
+        }
+
+        StringBuilder booleanBuilder = new StringBuilder();
+
+        if (leftChild != null){
+            booleanBuilder.append(visit(leftChild));
+        }
+        booleanBuilder.append(" ").append(booleanOpMap.get(node.getKind())).append(".bool ");
+        booleanBuilder.append(visit(rightChild));
+
+        if (node.getParent().getKind().equals("Expression") || node.getParent().getKind().equals("Assign")) {
+            return booleanBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".bool";
+
+        lineWithTabs().append(tempVar).append(" :=.bool ").append(booleanBuilder).append(";\n");
+
+        return tempVar;
+    }
+
     public String visitInt(JmmNode node, List<Report> reports) {
         return node.get("value") + ".i32";
+    }
+
+    public String visitBool(JmmNode node, List<Report> reports) {
+        return (node.getKind().equals("True") ? "1" : "0") + ".bool";
     }
 
     public String visitVariable(JmmNode node, List<Report> reports) {

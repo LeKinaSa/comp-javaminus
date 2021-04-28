@@ -184,7 +184,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         Symbol symbol = symbolTable.getSymbol(signature, name);
 
         JmmNode siblingNode = node.getParent();
-        JmmNode rightChild = siblingNode.getChildren().get(1);
+        JmmNode rightChild = siblingNode.getChildren().get(1); // TODO: this is breaking with Not
         if(rightChild.getKind().equals("Func")) { // Don't verify imported variables
             Type varType = getVariableType(signature, name);
 
