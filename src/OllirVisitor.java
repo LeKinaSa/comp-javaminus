@@ -1,3 +1,8 @@
+
+import pt.up.fe.comp.jmm.JmmNode;
+import pt.up.fe.comp.jmm.analysis.table.Symbol;
+import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.report.Report;
 
@@ -131,9 +136,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         // TODO: Visit the body of the method
         visit(node.getChildren().get(0));
 
-    public OllirVisitor(StringBuilder ollirCodeBuilder) {
-        this.ollirCode = ollirCodeBuilder;
+        removeTab();
+        lineWithTabs().append("}\n");
 
+        return null;
     }
 
     public String visitExpression(JmmNode node, List<Report> reports) {
