@@ -1,5 +1,6 @@
 
 import pt.up.fe.comp.jmm.JmmNode;
+import pt.up.fe.comp.jmm.analysis.table.Type;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -16,6 +17,12 @@ public class Utils {
         } catch (UnsupportedEncodingException e) {
             return null;
         }
+    }
+
+    public static Type getTypeFromString(String str) {
+        boolean isArray = str.endsWith("[]");
+        if (isArray) str = str.substring(0, str.length() - 2);
+        return new Type(str, isArray);
     }
 
     public static String generateMethodSignature(JmmNode node) {

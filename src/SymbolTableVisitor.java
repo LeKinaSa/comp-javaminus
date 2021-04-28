@@ -43,36 +43,27 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitMethod(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignature(node);
-        String name = node.get("name");
-        Type returnType;
-
-        if (name.equals("main")) {
-            returnType = new Type("void", false);
-        }
-        else {
-            String returnTypeName = node.get("returnType");
-            boolean isArray = returnTypeName.endsWith("[]");
-            if (isArray) {
-                returnTypeName = returnTypeName.substring(0, returnTypeName.length() - 2);
-            }
-
-            returnType = new Type(returnTypeName, isArray);
-        }
+        Type returnType = Utils.getTypeFromString(node.get("returnType"));
 
         if (!symbolTable.methods.add(signature)) {
             String message = "Method with signature " + signature + " already exists";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
         }
 
-        symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, new HashSet<>(), new HashSet<>()));
+        Set<Symbol> parameters = new LinkedHashSet<>();
+
+        if (node.get("name").equals("main")) {
+            parameters.add(new Symbol(new Type("String", true), node.get("cmdArgsName")));
+        }
+
+        symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, parameters, new LinkedHashSet<>()));
         return null;
     }
 
     private Object visitVariableDeclaration(JmmNode node, List<Report> reports) {
         String name = node.get("name"), typeName = node.get("type");
-        boolean isArray = typeName.endsWith("[]");
-        
-        Type type = new Type(isArray ? typeName.substring(0, typeName.length() - 2) : typeName, isArray);
+
+        Type type = Utils.getTypeFromString(typeName);
         Symbol symbol = new Symbol(type, name);
 
         if (node.getParent().getKind().equals("Class")) { // Class field
@@ -103,9 +94,8 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitParameter(JmmNode node, List<Report> reports) {
         String name = node.get("name"), typeName = node.get("type");
-        boolean isArray = typeName.endsWith("[]");
 
-        Type type = new Type(isArray ? typeName.substring(0, typeName.length() - 2) : typeName, isArray);
+        Type type = Utils.getTypeFromString(typeName);
         Symbol symbol = new Symbol(type, name);
         Optional<JmmNode> methodNode = node.getAncestor("Method");
 

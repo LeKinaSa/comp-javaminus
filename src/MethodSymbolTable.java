@@ -23,18 +23,20 @@ public class MethodSymbolTable {
     }
 
     public Symbol getParameter(String fieldName) {
-        for(Symbol symbol: this.parameters) {
-            if(symbol.getName().equals(fieldName))
+        for (Symbol symbol: this.parameters) {
+            if (symbol.getName().equals(fieldName)) {
                 return symbol;
+            }
         }
 
         return null;
     }
 
     public Symbol getLocalVariable(String fieldName) {
-        for(Symbol symbol: this.localVariables) {
-            if(symbol.getName().equals(fieldName))
+        for (Symbol symbol: this.localVariables) {
+            if (symbol.getName().equals(fieldName)) {
                 return symbol;
+            }
         }
 
         return null;
