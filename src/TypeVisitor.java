@@ -8,12 +8,13 @@ import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
 
     private final Set<String> initializedVariables = new HashSet<>();
-    private final Set<String> importedClasses = new HashSet<>();
+    private final Set<String> importedClasses;
 
     private static final Type intType = new Type("int", false),
             booleanType = new Type("boolean", false),
@@ -21,6 +22,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
     public TypeVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
+        importedClasses = symbolTable.getImports().stream().map(this::getImportedClass).collect(Collectors.toSet());
 
         addVisit("Add", this::visitArithmeticExpression);
         addVisit("Sub", this::visitArithmeticExpression);
@@ -43,16 +45,17 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         addVisit("Import", this::visitImport);
     }
 
-    private Object visitImport(JmmNode node, List<Report> reports) {
-        String name = node.get("module");
+    private String getImportedClass(String moduleName) {
         String importedClass;
-        if(name.lastIndexOf('.') != -1)
-            importedClass = name.substring(name.lastIndexOf('.') + 1);
-        else
-            importedClass = name;
 
-        importedClasses.add(importedClass);
-        return null;
+        if (moduleName.lastIndexOf('.') != -1) {
+            importedClass = moduleName.substring(moduleName.lastIndexOf('.') + 1);
+        }
+        else {
+            importedClass = moduleName;
+        }
+
+        return importedClass;
     }
 
     private Object visitArithmeticExpression(JmmNode node, List<Report> reports) {
@@ -307,7 +310,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                         }
                         else {
                             List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
-                            getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                            verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                         }
                     }
                 }
@@ -323,7 +326,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     }
                     else {
                         List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
-                        getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                        verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                     }
                 }
             }
@@ -337,7 +340,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                 }
                 else {
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
-                    getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                    verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
             }
             else { // Imported class or new Class() (with same filename)
@@ -345,7 +348,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
-                    getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
+                    verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
                 else if (leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !importedClasses.contains(leftChild.get("name"))) {
                     String message = "Class \"" + ((leftChild.getKind().equals("NewInstance")) ? leftChild.get("class") : leftChild.get("name")) + "\" not included in imports.";
@@ -367,7 +370,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         return false;
     }
 
-    public String getCalledMethodSignature(String calledFuncSignature, String methodName, List<String> passedArgs, JmmNode funcNode, List<Report> reports) {
+    public void verifyCalledMethodSignature(String calledFuncSignature, String methodName, List<String> passedArgs, JmmNode funcNode, List<Report> reports) {
         int numSupposedMethodArgs = 0;
         int numCommonArgs = 0;
 
@@ -376,7 +379,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String name = methodSignature.substring(0, methodSignature.indexOf("("));
 
             if (calledFuncSignature.equals(methodSignature))
-                return null;
+                return;
             else if (name.equals(methodName)) {
                 List<String> methodArgs = getFunctionPassedArguments(methodSignature);
                 int numberOfMethodArgs = methodArgs.size();
@@ -405,7 +408,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
 
         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(funcNode.get("line")), Integer.parseInt(funcNode.get("col")), message));
-        return null;
     }
 
     public List<String> getFunctionPassedArguments(String methodSignature) {
@@ -518,7 +520,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
     private Type getVariableType(String signature, String name) {
         Symbol symbol = symbolTable.getSymbol(signature, name);
-        if (symbol == null) return null;
-        return symbol.getType();
+        return symbol == null ? null : symbol.getType();
     }
 }
