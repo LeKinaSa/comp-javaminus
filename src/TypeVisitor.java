@@ -22,7 +22,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
     public TypeVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
-        importedClasses = symbolTable.getImports().stream().map(this::getImportedClass).collect(Collectors.toSet());
+        importedClasses = symbolTable.getImports().stream().map(Utils::getImportedClass).collect(Collectors.toSet());
 
         addVisit("Add", this::visitArithmeticExpression);
         addVisit("Sub", this::visitArithmeticExpression);
@@ -41,21 +41,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         addVisit("ArrayAccess", this::visitArrayAccess);
 
         addVisit("Dot", this::visitDot);
-
-        addVisit("Import", this::visitImport);
-    }
-
-    private String getImportedClass(String moduleName) {
-        String importedClass;
-
-        if (moduleName.lastIndexOf('.') != -1) {
-            importedClass = moduleName.substring(moduleName.lastIndexOf('.') + 1);
-        }
-        else {
-            importedClass = moduleName;
-        }
-
-        return importedClass;
     }
 
     private Object visitArithmeticExpression(JmmNode node, List<Report> reports) {
@@ -72,8 +57,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
 
-        Type leftType = getExpressionType(leftChild, signature);
-        Type rightType = getExpressionType(rightChild, signature);
+        Type leftType = Utils.getExpressionType(symbolTable, leftChild, signature);
+        Type rightType = Utils.getExpressionType(symbolTable, rightChild, signature);
 
         System.out.println("Left type: " + leftType);
         System.out.println("Right type: " + rightType);
@@ -104,7 +89,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
 
         JmmNode firstChild = node.getChildren().get(0);
-        Type firstType = getExpressionType(firstChild, signature);
+        Type firstType = Utils.getExpressionType(symbolTable, firstChild, signature);
 
         if (!booleanType.equals(firstType)) {
             String message = "Invalid type for operation " + node.getKind();
@@ -113,7 +98,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         
         if (node.getNumChildren() == 2) { // And
             JmmNode secondChild = node.getChildren().get(1);
-            Type secondType = getExpressionType(secondChild, signature);
+            Type secondType = Utils.getExpressionType(symbolTable, secondChild, signature);
 
             if (!booleanType.equals(secondType)) {
                 String message = "Invalid type for operation " + node.getKind();
@@ -138,8 +123,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
 
-        Type leftType = getExpressionType(leftChild, signature);
-        Type rightType = getExpressionType(rightChild, signature);
+        Type leftType = Utils.getExpressionType(symbolTable, leftChild, signature);
+        Type rightType = Utils.getExpressionType(symbolTable, rightChild, signature);
 
         String varName;
 
@@ -189,7 +174,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode siblingNode = node.getParent();
         JmmNode rightChild = siblingNode.getChildren().get(1); // TODO: this is breaking with Not
         if (rightChild.getKind().equals("Func")) { // Don't verify imported variables
-            Type varType = getVariableType(signature, name);
+            Type varType = Utils.getVariableType(symbolTable, signature, name);
 
             if (varType == null) {
                 return null;
@@ -227,7 +212,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         JmmNode child = node.getChildren().get(0);
 
-        Type childType = getExpressionType(child, signature);
+        Type childType = Utils.getExpressionType(symbolTable, child, signature);
 
         // Child (array size expression) needs to evaluate to an int
         if (!intType.equals(childType)) {
@@ -257,7 +242,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
         else {
             String varName = var.get("name");
-            Type varType = getVariableType(signature, varName);
+            Type varType = Utils.getVariableType(symbolTable, signature, varName);
             
             if (varType == null || !varType.equals(intArrayType)) {
                 String message = "Invalid array access: variable " + varName + " is not an array";
@@ -266,7 +251,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
 
         JmmNode index = node.getChildren().get(1);
-        Type indexType = getExpressionType(index, signature);
+        Type indexType = Utils.getExpressionType(symbolTable, index, signature);
 
         // Child (array index) needs to evaluate to an int
         if (!intType.equals(indexType)) {
@@ -286,7 +271,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
 
-        Type leftType = getExpressionType(leftChild, signature);
+        Type leftType = Utils.getExpressionType(symbolTable, leftChild, signature);
 
         if (rightChild.getKind().equals("Length") && (leftType == null || !leftType.isArray())) {
             String message = "Builtin \"length\" can only be used with arrays.";
@@ -298,11 +283,11 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String funcName = rightChild.get("name");
 
             if (leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
-                Type varType = getVariableType(signature, leftChild.get("name"));
+                Type varType = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
                 if (varType.getName().equals(className)) { // Same class
                     // TO DO: REFACTOR
                     if (extendsName == null) {
-                        String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                        String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                         String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                         if (!checkMethodExistence(methodName)) {
                             String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
@@ -317,7 +302,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             }
             else if (leftChild.getKind().equals("This")) {
                 if (extendsName == null) {
-                    String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                    String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                     // TO DO: REFACTOR
                     if (!checkMethodExistence(methodName)) {
@@ -331,7 +316,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                 }
             }
             else if (leftChild.getKind().equals("NewInstance") && leftChild.get("class").equals(symbolTable.getClassName())) {
-                String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                 String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                 // TO DO: REFACTOR
                 if (!checkMethodExistence(methodName)) {
@@ -345,7 +330,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             }
             else { // Imported class or new Class() (with same filename)
                 if (leftType != null && leftType.getName().equals(symbolTable.getClassName())) {
-                    String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
+                    String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                     verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
@@ -418,108 +403,4 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     /*public int getNumberOfArguments(String methodSignature) { // Number of commas is the number of arguments
         return methodSignature.length() - methodSignature.replace(",", "").length() + 1;
     }*/
-
-
-    public Type getExpressionType(JmmNode node, String methodSignature) {
-        JmmNode parentNode = node.getParent();
-
-        switch (node.getKind()) {
-            case "And":
-            case "LessThan":
-            case "Not":
-            case "True":
-            case "False":
-                return new Type("boolean", false);
-            case "Expression":
-                if (node.getNumChildren() == 1) {
-                    return getExpressionType(node.getChildren().get(0), methodSignature);
-                }
-                break;
-            case "Add":
-            case "Sub":
-            case "Mul":
-            case "Div":
-            case "Int":
-            case "ArrayAccess": // TODO: if args array in main will be used, change this
-                return new Type("int", false);
-            case "This":
-                if (parentNode.getKind().equals("Dot")) { // this.method
-                    return getReturnType(methodSignature, parentNode.getChildren().get(1));
-                }
-                break;
-            case "Var":
-                return getVariableType(methodSignature, node.get("name")); // Variable
-            case "Dot": {
-                JmmNode leftChild = node.getChildren().get(0);
-                JmmNode rightChild = node.getChildren().get(1);
-
-                if (rightChild.getKind().equals("Length")) {
-                    return new Type("int", false);
-                } else if (rightChild.getKind().equals("Func")) {
-                    // Var is same class or This -> get type | else assume int (unknown class)
-                    if(leftChild.getKind().equals("NewInstance") || leftChild.getKind().equals("This") || leftChild.get("name").equals(symbolTable.getClassName()))
-                        return getExpressionType(rightChild, methodSignature);
-                    else
-                        return new Type("int", false);
-                }
-
-                break;
-            }
-            case "Func":
-                return getReturnType(methodSignature, node);
-            case "NewArray":
-                return new Type("int", true);
-            case "NewInstance":
-                return new Type(node.get("class"), false);
-            default:
-                break;
-        }
-
-        return null;
-    }
-
-    private String getNodeFunctionSignature(String methodSignature, JmmNode node) {
-        String signature = node.get("name");
-
-        if (signature.equals("main")) {
-            signature += "(String[])";
-        }
-        else {
-            JmmNode argsNode = node.getChildren().get(0);
-            if (argsNode != null) {
-                List<JmmNode> expressionNodes = argsNode.getChildren();
-                List<String> types = new ArrayList<>();
-
-                signature += "(";
-
-                for (JmmNode expressionNode: expressionNodes) {
-                    Type varType = getExpressionType(expressionNode.getChildren().get(0), methodSignature);
-                    // String varName = expressionNode.getChildren().get(0).get("name");
-                    // Type varType = getVariableType(methodSignature, varName);
-
-                    if (varType != null) {
-                        types.add((varType.isArray()) ? varType.getName().concat("[]") : varType.getName());
-                    }
-                }
-
-                signature += String.join(", ", types) + ")";
-            }
-        }
-        return signature;
-    }
-
-    private Type getReturnType(String methodSignature, JmmNode funcNode) {
-        String newSignature = getNodeFunctionSignature(methodSignature, funcNode);
-
-        if (symbolTable.methodSymbolTableMap.containsKey(newSignature)) {
-            return symbolTable.methodSymbolTableMap.get(newSignature).returnType;
-        }
-
-        return null;
-    }
-
-    private Type getVariableType(String signature, String name) {
-        Symbol symbol = symbolTable.getSymbol(signature, name);
-        return symbol == null ? null : symbol.getType();
-    }
 }

@@ -140,8 +140,9 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addTab();
 
         tempVariablesMap.put(signature, 0);
-        // TODO: Visit the body of the method
-        visit(node.getChildren().get(0));
+
+        int bodyIdx = isMain ? 0 : 1;
+        visit(node.getChildren().get(bodyIdx));
 
         removeTab();
         lineWithTabs().append("}\n");
