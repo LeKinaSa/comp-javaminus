@@ -185,12 +185,13 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         JmmNode siblingNode = node.getParent();
         JmmNode rightChild = siblingNode.getChildren().get(1); // TODO: this is breaking with Not
-        if(rightChild.getKind().equals("Func")) { // Don't verify imported variables
+        if (rightChild.getKind().equals("Func")) { // Don't verify imported variables
             Type varType = getVariableType(signature, name);
 
-            if(varType == null) {
+            if (varType == null) {
                 return null;
-            } else if (varType.getName().equals("int") || varType.getName().equals("boolean")) {
+            }
+            else if (varType.getName().equals("int") || varType.getName().equals("boolean")) {
                 String message = "Literal \"" + name + "\" cannot call a method.";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             }
@@ -206,7 +207,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String message = "Error: variable " + name + " was used without being initialized.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
-
 
         return null;
     }
@@ -275,13 +275,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     }
 
     public Object visitDot(JmmNode node, List<Report> reports) {
-        Optional<JmmNode> methodNode = node.getAncestor("Method");
-
-        String signature;
-        if (methodNode.isPresent()) {
-            signature = Utils.generateMethodSignature(methodNode.get());
-        }
-        else {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+        if (signature == null) {
             return null;
         }
 
@@ -293,7 +288,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         if (rightChild.getKind().equals("Length") && (leftType == null || !leftType.isArray())) {
             String message = "Builtin \"length\" can only be used with arrays.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(leftChild.get("line")), Integer.parseInt(leftChild.get("col")), message));
-        } else if(rightChild.getKind().equals("Func")) {
+        }
+        else if (rightChild.getKind().equals("Func")) {
             String className = symbolTable.getClassName();
             String extendsName = symbolTable.getSuper();
             String funcName = rightChild.get("name");
@@ -308,13 +304,15 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                         if (!checkMethodExistence(methodName)) {
                             String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
-                        } else {
+                        }
+                        else {
                             List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                             getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                         }
                     }
                 }
-            } else if (leftChild.getKind().equals("This")) {
+            }
+            else if (leftChild.getKind().equals("This")) {
                 if (extendsName == null) {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
@@ -322,30 +320,34 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     if (!checkMethodExistence(methodName)) {
                         String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
-                    } else {
+                    }
+                    else {
                         List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                         getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                     }
                 }
-            } else if (leftChild.getKind().equals("NewInstance") && leftChild.get("class").equals(symbolTable.getClassName())) {
+            }
+            else if (leftChild.getKind().equals("NewInstance") && leftChild.get("class").equals(symbolTable.getClassName())) {
                 String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                 String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                 // TO DO: REFACTOR
                 if (!checkMethodExistence(methodName)) {
                     String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
-                } else {
+                }
+                else {
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                     getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
-            } else { // Imported class or new Class() (with same filename)
-                if(leftType != null && leftType.getName().equals(symbolTable.getClassName())) {
+            }
+            else { // Imported class or new Class() (with same filename)
+                if (leftType != null && leftType.getName().equals(symbolTable.getClassName())) {
                     String calledFuncSignature = getNodeFunctionSignature(signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                     getCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
-                else if(leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !importedClasses.contains(leftChild.get("name"))) {
+                else if (leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !importedClasses.contains(leftChild.get("name"))) {
                     String message = "Class \"" + ((leftChild.getKind().equals("NewInstance")) ? leftChild.get("class") : leftChild.get("name")) + "\" not included in imports.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                 }
@@ -358,7 +360,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     public Boolean checkMethodExistence(String methodName) {
         for (String methodSignature : symbolTable.getMethodsSymbolTable().keySet()) {
             String name = methodSignature.substring(0, methodSignature.indexOf("("));
-            if(name.equals(methodName)) {
+            if (name.equals(methodName)) {
                 return true;
             }
         }
@@ -370,23 +372,24 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         int numCommonArgs = 0;
 
         int numberOfPassedArgs = passedArgs.size();
-        for(String methodSignature: symbolTable.getMethodsSymbolTable().keySet()) {
+        for (String methodSignature: symbolTable.getMethodsSymbolTable().keySet()) {
             String name = methodSignature.substring(0, methodSignature.indexOf("("));
 
-            if(calledFuncSignature.equals(methodSignature))
+            if (calledFuncSignature.equals(methodSignature))
                 return null;
-            else if(name.equals(methodName)) {
+            else if (name.equals(methodName)) {
                 List<String> methodArgs = getFunctionPassedArguments(methodSignature);
                 int numberOfMethodArgs = methodArgs.size();
                 int numArgs = Math.min(numberOfPassedArgs, numberOfMethodArgs);
                 int auxNumCommonArgs = 0;
 
-                for(int i = 0; i < numArgs; i++) {
-                    if(passedArgs.get(i).equals(methodArgs.get(i)))
+                for (int i = 0; i < numArgs; i++) {
+                    if (passedArgs.get(i).equals(methodArgs.get(i))) {
                         auxNumCommonArgs++;
+                    }
                 }
 
-                if(auxNumCommonArgs > numCommonArgs || numCommonArgs == 0) {
+                if (auxNumCommonArgs > numCommonArgs || numCommonArgs == 0) {
                     numCommonArgs = auxNumCommonArgs;
                     numSupposedMethodArgs = numberOfMethodArgs;
                 }
@@ -394,20 +397,20 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         }
 
         String message;
-        if(numCommonArgs < numberOfPassedArgs && numSupposedMethodArgs == numberOfPassedArgs) {
+        if (numCommonArgs < numberOfPassedArgs && numSupposedMethodArgs == numberOfPassedArgs) {
             message = "Incorrect parameter types in method \"" + methodName + "\".";
-        } else
+        }
+        else {
             message = "Incorrect number of arguments in method \"" + methodName + "\".";
+        }
 
         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(funcNode.get("line")), Integer.parseInt(funcNode.get("col")), message));
-
         return null;
     }
 
     public List<String> getFunctionPassedArguments(String methodSignature) {
         String argsWithCommas = methodSignature.substring(methodSignature.indexOf("(") + 1, methodSignature.indexOf(")"));
-        List<String> passedArgs = Arrays.asList(argsWithCommas.split(", "));
-        return passedArgs;
+        return Arrays.asList(argsWithCommas.split(", "));
     }
 
     /*public int getNumberOfArguments(String methodSignature) { // Number of commas is the number of arguments
@@ -476,8 +479,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private String getNodeFunctionSignature(String methodSignature, JmmNode node) {
         String signature = node.get("name");
 
-        if (signature.equals("main"))
+        if (signature.equals("main")) {
             signature += "(String[])";
+        }
         else {
             JmmNode argsNode = node.getChildren().get(0);
             if (argsNode != null) {
@@ -491,8 +495,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     // String varName = expressionNode.getChildren().get(0).get("name");
                     // Type varType = getVariableType(methodSignature, varName);
 
-                    if(varType != null)
+                    if (varType != null) {
                         types.add((varType.isArray()) ? varType.getName().concat("[]") : varType.getName());
+                    }
                 }
 
                 signature += String.join(", ", types) + ")";

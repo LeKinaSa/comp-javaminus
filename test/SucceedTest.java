@@ -25,8 +25,8 @@ public class SucceedTest {
         System.out.println("Semantic reports: " + semanticsResult.getReports());
         TestUtils.noErrors(semanticsResult.getReports());
 
-        OptimizationStage ollirGenerationState = new OptimizationStage();
-        OllirResult ollirResult = ollirGenerationState.toOllir(semanticsResult);
+        OptimizationStage optimizationStage = new OptimizationStage();
+        OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
     }
 
     @Test
