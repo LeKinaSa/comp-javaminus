@@ -156,7 +156,7 @@ public class Utils {
                     return new Type("int", false);
                 }
                 else if (rightChild.getKind().equals("Func")) {
-                    if (leftChild.getKind().equals("This") || (!leftChild.getKind().equals("NewInstance") && leftChild.get("name").equals(symbolTable.getClassName()))) {
+                    if (leftChild.getKind().equals("This") || (!leftChild.getKind().equals("NewInstance") && leftChild.get("name").equals(symbolTable.getClassName()))) { // TODO: look at this
                         return getExpressionType(symbolTable, rightChild, methodSignature);
                     }
                     else {

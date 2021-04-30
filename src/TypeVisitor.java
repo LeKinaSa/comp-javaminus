@@ -24,6 +24,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         this.symbolTable = symbolTable;
         importedClasses = symbolTable.getImports().stream().map(Utils::getImportedClass).collect(Collectors.toSet());
 
+        addVisit("VarDecl", this::visitVariableDeclaration);
+
         addVisit("Add", this::visitArithmeticExpression);
         addVisit("Sub", this::visitArithmeticExpression);
         addVisit("Mul", this::visitArithmeticExpression);
@@ -43,6 +45,18 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         addVisit("Dot", this::visitDot);
     }
 
+    private Object visitVariableDeclaration(JmmNode node, List<Report> reports) {
+        Set<String> primitiveTypes = Set.of("int", "boolean", "int[]");
+        String type = node.get("type");
+
+        if (!primitiveTypes.contains(type) && !importedClasses.contains(type) && !type.equals(symbolTable.getClassName())) {
+            String message = "The type \"" + type + "\" is missing";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
+        return null;
+    }
+
     private Object visitArithmeticExpression(JmmNode node, List<Report> reports) {
         Optional<JmmNode> methodNode = node.getAncestor("Method");
 
@@ -59,9 +73,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         Type leftType = Utils.getExpressionType(symbolTable, leftChild, signature);
         Type rightType = Utils.getExpressionType(symbolTable, rightChild, signature);
-
-        System.out.println("Left type: " + leftType);
-        System.out.println("Right type: " + rightType);
 
         // Childs (Both variables with the same type (int))
         if (!intType.equals(leftType)) {
@@ -149,9 +160,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         initializedVariables.add(varName);
 
+        // TODO: This is shown even if right side is an undefined variable
         if (leftType == null || !leftType.equals(rightType)) {
-            System.out.println("DEBUG: " + leftType);
-            System.out.println("DEBUG: " + rightType);
             String message = "Type mismatch in assignment";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
