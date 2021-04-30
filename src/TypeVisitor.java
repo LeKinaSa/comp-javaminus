@@ -150,6 +150,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         initializedVariables.add(varName);
 
         if (leftType == null || !leftType.equals(rightType)) {
+            System.out.println("DEBUG: " + leftType);
+            System.out.println("DEBUG: " + rightType);
             String message = "Type mismatch in assignment";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
@@ -335,7 +337,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                     List<String> passedArgs = getFunctionPassedArguments(calledFuncSignature);
                     verifyCalledMethodSignature(calledFuncSignature, methodName, passedArgs, rightChild, reports);
                 }
-                else if (leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !importedClasses.contains(leftChild.get("name"))) {
+                else if (leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("class")) || !leftChild.getKind().equals("NewInstance") && !importedClasses.contains(leftChild.get("name"))) {
                     String message = "Class \"" + ((leftChild.getKind().equals("NewInstance")) ? leftChild.get("class") : leftChild.get("name")) + "\" not included in imports.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
                 }

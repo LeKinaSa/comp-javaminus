@@ -32,7 +32,17 @@ public class SucceedTest {
     @Test
     public void testSimple() {
         String jmmCode = SpecsIo.getResource("fixtures/public/Simple.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        JmmParserResult result = TestUtils.parse(jmmCode);
+        TestUtils.noErrors(result.getReports());
+
+        AnalysisStage analysisStage = new AnalysisStage();
+        JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
+
+        System.out.println("Semantic reports: " + semanticsResult.getReports());
+        TestUtils.noErrors(semanticsResult.getReports());
+
+        OptimizationStage optimizationStage = new OptimizationStage();
+        OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
     }
 
     @Test

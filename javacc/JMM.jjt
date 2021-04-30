@@ -266,5 +266,5 @@ void Function() #Func : { Token t; } {
 }
 
 void Arguments() #Args : {} {
-    (Expression() (<COMMA> Expression())*)?
+    (ExpressionAssign() (<COMMA> ExpressionAssign())*)?
 }

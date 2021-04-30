@@ -81,13 +81,12 @@ public class Utils {
         else {
             JmmNode argsNode = node.getChildren().get(0);
             if (argsNode != null) {
-                List<JmmNode> expressionNodes = argsNode.getChildren();
                 List<String> types = new ArrayList<>();
 
                 signature += "(";
 
-                for (JmmNode expressionNode: expressionNodes) {
-                    Type varType = getExpressionType(symbolTable, expressionNode.getChildren().get(0), methodSignature);
+                for (JmmNode argNode : argsNode.getChildren()) {
+                    Type varType = getExpressionType(symbolTable, argNode, methodSignature);
                     // String varName = expressionNode.getChildren().get(0).get("name");
                     // Type varType = getVariableType(methodSignature, varName);
 
@@ -157,7 +156,7 @@ public class Utils {
                     return new Type("int", false);
                 }
                 else if (rightChild.getKind().equals("Func")) {
-                    if (leftChild.getKind().equals("This") || leftChild.get("name").equals(symbolTable.getClassName())) {
+                    if (leftChild.getKind().equals("This") || (!leftChild.getKind().equals("NewInstance") && leftChild.get("name").equals(symbolTable.getClassName()))) {
                         return getExpressionType(symbolTable, rightChild, methodSignature);
                     }
                     else {
@@ -166,9 +165,9 @@ public class Utils {
                         }
 
                         if (leftChild.getKind().equals("Var")) {
-                            Type type = getVariableType(symbolTable, methodSignature, leftChild.get("name"));
-                            if (type != null) {
-                                return type;
+                            Type returnType = getReturnType(symbolTable, methodSignature, rightChild);
+                            if (returnType != null) {
+                                return returnType;
                             }
                         }
 

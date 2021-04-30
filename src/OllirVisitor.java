@@ -29,6 +29,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("Method", this::visitMethod);
         addVisit("Expression", this::visitExpression);
 
+        addVisit("VarDecl", this::visitVariableDeclaration);
+
         addVisit("Add", this::visitArithmeticOp);
         addVisit("Sub", this::visitArithmeticOp);
         addVisit("Mul", this::visitArithmeticOp);
@@ -90,11 +92,22 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         ollirBuilder.append(className).append(" {\n");
         addTab();
 
-        buildConstructor(className);
+        boolean constructorCreated = false;
 
         // Build OLLIR code for the children of the Class node
         for (JmmNode child : node.getChildren()) {
+            if (!constructorCreated && child.getKind().equals("Method")) {
+                // Place constructor before the first method (after the last field)
+                buildConstructor(className);
+                constructorCreated = true;
+            }
+            
             visit(child, reports);
+        }
+
+        if (!constructorCreated) {
+            buildConstructor(className);
+            constructorCreated = true;
         }
 
         removeTab();
@@ -165,6 +178,17 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
     public String visitExpression(JmmNode node, List<Report> reports) {
         return visit(node.getChildren().get(0));
+    }
+
+    public String visitVariableDeclaration(JmmNode node, List<Report> reports) {
+        JmmNode parentNode = node.getParent();
+        Symbol field = symbolTable.getField(node.get("name"));
+
+        if (parentNode.getKind().equals("Class")) {
+            lineWithTabs().append(".field private ").append(field.getName()).append(".").append(convertType(field.getType())).append(";\n");
+        }
+
+        return null;
     }
 
     public String visitArithmeticOp(JmmNode node, List<Report> reports) {
@@ -249,7 +273,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         for (int i = 0; i < parameters.size(); ++i) {
             Symbol symbol = parameters.get(i);
             if (symbol.getName().equals(name)) {
-                return "$" + i + "." + symbol.getName() + "." + convertType(symbol.getType());
+                return "$" + (i + 1) + "." + symbol.getName() + "." + convertType(symbol.getType());
             }
         }
 
@@ -290,24 +314,41 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             Type type = symbol.getType();
             String convertedType = convertType(type);
 
+            String finalVariable;
+            StringBuilder assignmentBuilder = new StringBuilder();
+
             if (symbolTable.fields.contains(symbol)) {
                 // We are assigning to a field, therefore we must use putfield
                 String expressionOllir = visit(expression, reports);
 
-                if (expressionOllir.startsWith("getfield")) {
-                    // Cannot use getfield within putfield, therefore we must use a temporary variable
+                if (expressionOllir.startsWith("getfield") || expressionOllir.startsWith("new")) {
+                    // Cannot use getfield or new within putfield, therefore we must use a temporary variable
                     tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
                     String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
 
-                    lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(expressionOllir);
+                    lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(expressionOllir).append(";\n");
                     expressionOllir = tempVar;
                 }
 
-                return "putfield(this, " + variable.get("name") + "." + convertedType + ", " + expressionOllir + ").V";
+                finalVariable = variable.get("name") + "." + convertedType;
+                assignmentBuilder.append("putfield(this, ").append(finalVariable).append(", ").append(expressionOllir).append(").V");
             }
             else {
-                return visit(variable, reports) + " :=." + convertedType + " " + visit(expression, reports);
+                finalVariable = visit(variable, reports);
+                assignmentBuilder.append(finalVariable).append(" :=.").append(convertedType).append(" ").append(visit(expression, reports));
             }
+
+            /*
+                c1.myClass :=.myClass new(myClass,3.i32).myClass;
+                c1.myClass :=.myClass new(myClass,3.i32).myClass;
+                invokespecial(c1.myClass,"<init>").V; // myClass c1 = new myClass(3);
+            */
+            
+            if (expression.getKind().equals("NewInstance")) {
+                assignmentBuilder.append(";\n").append(tabs).append("invokespecial(").append(finalVariable).append(", \"<init>\").V");
+            }
+
+            return assignmentBuilder.toString();
         }
 
         return null;
@@ -406,11 +447,35 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         return null;
     }
-    
+
     public String visitNewInstance(JmmNode node, List<Report> reports) {
-        // NewInstance (class=String)
-        // invokespecial(t6.String, "<init>").V;
-        return null;
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+        String className = node.get("class");
+
+        /*
+            io.println(new Fac().compFac(10));
+
+            aux1.Fac :=.Fac new(Fac).Fac;
+            invokespecial(aux1.Fac,"<init>").V;
+            aux2.i32 :=.i32 invokevirtual(aux1.Fac,"compFac",10.i32).i32;
+            invokestatic(io, "println", aux2.i3).V;
+        */
+
+        StringBuilder newInstanceBuilder = new StringBuilder();
+        newInstanceBuilder.append("new(").append(className).append(").").append(className);
+
+        if (node.getParent().getKind().equals("Assign")) {
+            return newInstanceBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + "." + className;
+
+        lineWithTabs().append(tempVar).append(" :=.").append(className).append(" ")
+                .append(newInstanceBuilder).append(";\n");
+        lineWithTabs().append("invokespecial(").append(tempVar).append(", \"<init>\").V;\n");
+
+        return tempVar;
     }
 
     public String visitReturn(JmmNode node, List<Report> reports) {
