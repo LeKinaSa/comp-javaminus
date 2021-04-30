@@ -176,7 +176,11 @@ public class Utils {
                         Set<String> integerOps = Set.of("Add", "Sub", "Mul", "Div", "LessThan", "ArrayAccess", "Size"),
                                 booleanOps = Set.of("Not", "And");
 
-                        if (parentNode.getKind().equals("Assign")) {
+                        if (parentNode.getKind().equals("Expression")) {
+                            // No way to infer return type, assume void
+                            return new Type("void", false);
+                        }
+                        else if (parentNode.getKind().equals("Assign")) {
                             JmmNode sibling = parentNode.getChildren().get(0);
 
                             if (sibling.getKind().equals("Var")) {

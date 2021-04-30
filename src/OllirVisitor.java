@@ -288,7 +288,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         JmmNode rightChild = node.getChildren().get(1);
 
         if (rightChild.getKind().equals("Func")) {
-            Type returnType = Utils.getExpressionType(symbolTable, rightChild, signature);
+            Type returnType = Utils.getExpressionType(symbolTable, node, signature);
 
             if (returnType == null) {
                 /* This should be caught during the semantic analysis, therefore in theory this code should never
@@ -298,32 +298,39 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             String convertedType = convertType(returnType);
 
-            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
-            String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
-
-            dotBuilder.append(tempVar).append(" :=.").append(convertedType).append(" ");
-
             String invokeType, calledOn;
 
-            if (leftChild.getKind().equals("This")) {
-                // Calling a function from the current class (use invokevirtual)
+            switch (leftChild.getKind()) {
+                case "This":
+                    // Calling a function from the current class (use invokevirtual)
+                    // Get the signature of the method that is being called
+                    String calledSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
 
-                // Get the signature of the method that is being called
-                String calledSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
+                    invokeType = "invokevirtual";
+                    calledOn = "this";
+                    break;
+                case "Var":
+                    Type type = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
+                    System.out.println(type);
+                    if (type == null) {
+                        // Symbol not found (calling a static method of another class)
+                        invokeType = "invokestatic";
+                        calledOn = leftChild.get("name");
+                    }
+                    else {
+                        // Calling a method on an existing symbol
+                        invokeType = "invokevirtual";
+                        calledOn = leftChild.get("name") + "." + convertType(type);
+                    }
+                    break;
+                case "NewInstance":
+                    String newInstanceVar = visit(leftChild, reports);
 
-                invokeType = "invokevirtual";
-                calledOn = "this";
-            }
-            else if (leftChild.getKind().equals("Var")) {
-                Type type = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
-                if (type == null) {
-                    // Symbol not found 
-                }
-            }
-            else if (leftChild.getKind().equals("NewInstance")) {
-                String newInstanceVar = visit(leftChild, reports);
-
-
+                    invokeType = "invokevirtual";
+                    calledOn = newInstanceVar;
+                    break;
+                default:
+                    return null;
             }
 
             dotBuilder.append(invokeType).append("(").append(calledOn).append(", \"").append(rightChild.get("name")).append("\"");
@@ -336,11 +343,15 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             dotBuilder.append(").").append(convertedType);
 
-            if (node.getParent().getKind().equals("Expression")) {
+            JmmNode parentNode = node.getParent();
+            if (parentNode.getKind().equals("Expression") || parentNode.getKind().equals("Assign")) {
                 return dotBuilder.toString();
             }
 
-            lineWithTabs().append(dotBuilder).append(";\n");
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
+
+            lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(dotBuilder).append(";\n");
             return tempVar;
         }
 
