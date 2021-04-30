@@ -234,6 +234,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         String name = node.get("name");
 
+        // Access local variable
         List<Symbol> localVariables = symbolTable.getLocalVariables(signature);
         Optional<Symbol> optional = localVariables.stream().filter(s -> s.getName().equals(name)).findFirst();
 
@@ -242,6 +243,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return symbol.getName() + "." + convertType(symbol.getType());
         }
 
+        // Access function parameter
         List<Symbol> parameters = symbolTable.getParameters(signature);
 
         for (int i = 0; i < parameters.size(); ++i) {
@@ -251,7 +253,28 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             }
         }
 
-        // TODO: fields
+        // Access field
+        List<Symbol> fields = symbolTable.getFields();
+        optional = fields.stream().filter(s -> s.getName().equals(name)).findFirst();
+
+        if (optional.isPresent()) {
+            Symbol symbol = optional.get();
+            String convertedType = convertType(symbol.getType());
+            StringBuilder fieldBuilder = new StringBuilder();
+
+            fieldBuilder.append("getfield(this, ").append(symbol.getName()).append(".").append(convertedType).append(").").append(convertedType);
+
+            JmmNode parentNode = node.getParent();
+            if (parentNode.getKind().equals("Assign")) {
+                return fieldBuilder.toString();
+            }
+
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
+
+            lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(fieldBuilder).append(";\n");
+            return tempVar;
+        }
 
         // Should never be reached, this should be caught during semantic analysis
         return null;
@@ -263,8 +286,28 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         JmmNode variable = node.getChildren().get(0), expression = node.getChildren().get(1);
 
         if (variable.getKind().equals("Var")) {
-            Type type = symbolTable.getSymbol(signature, variable.get("name")).getType();
-            return visit(variable) + " :=." + convertType(type) + " " + visit(expression);
+            Symbol symbol = symbolTable.getSymbol(signature, variable.get("name"));
+            Type type = symbol.getType();
+            String convertedType = convertType(type);
+
+            if (symbolTable.fields.contains(symbol)) {
+                // We are assigning to a field, therefore we must use putfield
+                String expressionOllir = visit(expression, reports);
+
+                if (expressionOllir.startsWith("getfield")) {
+                    // Cannot use getfield within putfield, therefore we must use a temporary variable
+                    tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+                    String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
+
+                    lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(expressionOllir);
+                    expressionOllir = tempVar;
+                }
+
+                return "putfield(this, " + variable.get("name") + "." + convertedType + ", " + expressionOllir + ").V";
+            }
+            else {
+                return visit(variable, reports) + " :=." + convertedType + " " + visit(expression, reports);
+            }
         }
 
         return null;
