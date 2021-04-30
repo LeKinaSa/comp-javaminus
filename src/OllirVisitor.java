@@ -7,6 +7,7 @@ import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.report.Report;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     private final StringBuilder ollirBuilder;
@@ -17,9 +18,12 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/");
     private static final Map<String, String> booleanOpMap = Map.of("LessThan", "<", "And", "&&", "Not", "!");
 
+    private final Set<String> importedClasses;
+
     public OllirVisitor(StringBuilder ollirBuilder, SymbolTable symbolTable) {
         this.ollirBuilder = ollirBuilder;
         this.symbolTable = (JMMSymbolTable) symbolTable;
+        importedClasses = symbolTable.getImports().stream().map(Utils::getImportedClass).collect(Collectors.toSet());
 
         addVisit("Class", this::visitClass);
         addVisit("Method", this::visitMethod);
@@ -40,6 +44,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("Var", this::visitVariable);
         addVisit("Assign", this::visitAssignment);
         addVisit("Statement", this::visitStatement);
+
+        addVisit("Dot", this::visitDot);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -267,6 +273,57 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         // TODO: If and While statements
         String expressionResult = visit(node.getChildren().get(0));
         lineWithTabs().append(expressionResult).append(";\n");
+
+        return null;
+    }
+
+    public String visitDot(JmmNode node, List<Report> reports) {
+        StringBuilder dotBuilder = new StringBuilder();
+
+        // TODO: Array length
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode leftChild = node.getChildren().get(0);
+        JmmNode rightChild = node.getChildren().get(1);
+
+        if (rightChild.getKind().equals("Func")) {
+            Type returnType = Utils.getExpressionType(symbolTable, rightChild, signature);
+
+            if (returnType == null) {
+                /* This should be caught during the semantic analysis, therefore in theory this code should never
+                be reached */
+                return null;
+            }
+
+            String convertedType = convertType(returnType);
+
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
+
+            dotBuilder.append(tempVar).append(" :=.").append(convertedType).append(" ");
+
+            if (leftChild.getKind().equals("This")) {
+                // Calling a function from the current class (use invokevirtual)
+
+                // Get the signature of the method that is being called
+                String calledSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
+
+
+
+                dotBuilder.append("invokevirtual(this, \"").append(rightChild.get("name")).append("\"");
+
+                // TODO: Passing extra args
+
+                dotBuilder.append(").").append(convertedType);
+
+                if (node.getParent().getKind().equals("Expression")) {
+                    return dotBuilder.toString();
+                }
+            }
+
+            lineWithTabs().append(dotBuilder).append(";\n");
+            return tempVar;
+        }
 
         return null;
     }

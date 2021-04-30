@@ -171,6 +171,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         String name = node.get("name");
         Symbol symbol = symbolTable.getSymbol(signature, name);
 
+        /*
         JmmNode siblingNode = node.getParent();
         JmmNode rightChild = siblingNode.getChildren().get(1); // TODO: this is breaking with Not
         if (rightChild.getKind().equals("Func")) { // Don't verify imported variables
@@ -183,7 +184,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                 String message = "Literal \"" + name + "\" cannot call a method.";
                 reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             }
-        }
+        }*/
 
         if (symbol == null) {
             String message = "Error: symbol " + name + " is undefined.";
@@ -191,7 +192,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             return null;
         }
 
-        if (!initializedVariables.contains(name)) {
+        if (!initializedVariables.contains(name) && !symbolTable.methodSymbolTableMap.get(signature).parameters.contains(symbol)) {
             String message = "Error: variable " + name + " was used without being initialized.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
