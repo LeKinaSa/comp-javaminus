@@ -312,7 +312,12 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
                 dotBuilder.append("invokevirtual(this, \"").append(rightChild.get("name")).append("\"");
 
-                // TODO: Passing extra args
+                // TODO: Passing args
+                JmmNode argsNode = rightChild.getChildren().get(0);
+                for (JmmNode arg : argsNode.getChildren()) {
+                    String argOllir = visit(arg, reports);
+                    dotBuilder.append(", ").append(argOllir);
+                }
 
                 dotBuilder.append(").").append(convertedType);
 
