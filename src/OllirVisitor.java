@@ -47,6 +47,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         addVisit("Dot", this::visitDot);
         addVisit("NewInstance", this::visitNewInstance);
+        addVisit("Return", this::visitReturn);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -150,6 +151,11 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         int bodyIdx = isMain ? 0 : 1;
         visit(node.getChildren().get(bodyIdx));
+
+        // Visit Return node (if the method has one)
+        if (!isMain) {
+            visit(node.getChildren().get(bodyIdx + 1));
+        }
 
         removeTab();
         lineWithTabs().append("}\n");
@@ -311,7 +317,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                     break;
                 case "Var":
                     Type type = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
-                    System.out.println(type);
+
                     if (type == null) {
                         // Symbol not found (calling a static method of another class)
                         invokeType = "invokestatic";
@@ -361,6 +367,16 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitNewInstance(JmmNode node, List<Report> reports) {
         // NewInstance (class=String)
         // invokespecial(t6.String, "<init>").V;
+        return null;
+    }
+
+    public String visitReturn(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+        Type returnType = symbolTable.getReturnType(signature);
+
+        String expressionOllir = visit(node.getChildren().get(0), reports);
+
+        lineWithTabs().append("ret.").append(convertType(returnType)).append(" ").append(expressionOllir).append(";\n");
         return null;
     }
 }
