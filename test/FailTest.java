@@ -6,6 +6,7 @@ import org.junit.Test;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.specs.util.SpecsIo;
 
 public class FailTest {
@@ -58,7 +59,10 @@ public class FailTest {
         JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
 
         TestUtils.mustFail(semanticsResult.getReports());
-        System.out.println(semanticsResult.getReports());
+
+        for (Report report : semanticsResult.getReports()) {
+            System.out.println(report);
+        }
     }
 
     @Test

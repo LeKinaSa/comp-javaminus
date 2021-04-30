@@ -46,6 +46,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("Statement", this::visitStatement);
 
         addVisit("Dot", this::visitDot);
+        addVisit("NewInstance", this::visitNewInstance);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -302,33 +303,53 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             dotBuilder.append(tempVar).append(" :=.").append(convertedType).append(" ");
 
+            String invokeType, calledOn;
+
             if (leftChild.getKind().equals("This")) {
                 // Calling a function from the current class (use invokevirtual)
 
                 // Get the signature of the method that is being called
                 String calledSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
 
-
-
-                dotBuilder.append("invokevirtual(this, \"").append(rightChild.get("name")).append("\"");
-
-                JmmNode argsNode = rightChild.getChildren().get(0);
-                for (JmmNode arg : argsNode.getChildren()) {
-                    String argOllir = visit(arg, reports);
-                    dotBuilder.append(", ").append(argOllir);
+                invokeType = "invokevirtual";
+                calledOn = "this";
+            }
+            else if (leftChild.getKind().equals("Var")) {
+                Type type = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
+                if (type == null) {
+                    // Symbol not found 
                 }
+            }
+            else if (leftChild.getKind().equals("NewInstance")) {
+                String newInstanceVar = visit(leftChild, reports);
 
-                dotBuilder.append(").").append(convertedType);
 
-                if (node.getParent().getKind().equals("Expression")) {
-                    return dotBuilder.toString();
-                }
+            }
+
+            dotBuilder.append(invokeType).append("(").append(calledOn).append(", \"").append(rightChild.get("name")).append("\"");
+
+            JmmNode argsNode = rightChild.getChildren().get(0);
+            for (JmmNode arg : argsNode.getChildren()) {
+                String argOllir = visit(arg, reports);
+                dotBuilder.append(", ").append(argOllir);
+            }
+
+            dotBuilder.append(").").append(convertedType);
+
+            if (node.getParent().getKind().equals("Expression")) {
+                return dotBuilder.toString();
             }
 
             lineWithTabs().append(dotBuilder).append(";\n");
             return tempVar;
         }
 
+        return null;
+    }
+    
+    public String visitNewInstance(JmmNode node, List<Report> reports) {
+        // NewInstance (class=String)
+        // invokespecial(t6.String, "<init>").V;
         return null;
     }
 }

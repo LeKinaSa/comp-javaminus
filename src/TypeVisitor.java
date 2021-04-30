@@ -286,7 +286,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             if (leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
                 Type varType = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
                 if (varType.getName().equals(className)) { // Same class
-                    // TO DO: REFACTOR
+                    // TODO: REFACTOR
                     if (extendsName == null) {
                         String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                         String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
@@ -305,7 +305,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
                 if (extendsName == null) {
                     String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                     String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
-                    // TO DO: REFACTOR
+                    // TODO: REFACTOR
                     if (!checkMethodExistence(methodName)) {
                         String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                         reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));
@@ -319,7 +319,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             else if (leftChild.getKind().equals("NewInstance") && leftChild.get("class").equals(symbolTable.getClassName())) {
                 String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
                 String methodName = calledFuncSignature.substring(0, calledFuncSignature.indexOf("("));
-                // TO DO: REFACTOR
+                // TODO: REFACTOR
                 if (!checkMethodExistence(methodName)) {
                     String message = "Invoked method \"" + funcName + "\" does not exist inside class.";
                     reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(rightChild.get("line")), Integer.parseInt(rightChild.get("col")), message));

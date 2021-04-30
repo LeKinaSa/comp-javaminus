@@ -6,10 +6,10 @@ import pt.up.fe.comp.jmm.analysis.table.Type;
 import java.util.*;
 
 public class JMMSymbolTable implements SymbolTable {
-    public final Set<String> imports = new HashSet<>();
+    public final Set<String> imports = new LinkedHashSet<>();
     private String className, superclassName;
-    public final Set<Symbol> fields = new HashSet<>();
-    public final Set<String> methods = new HashSet<>();
+    public final Set<Symbol> fields = new LinkedHashSet<>();
+    public final Set<String> methods = new LinkedHashSet<>();
     public final Map<String, MethodSymbolTable> methodSymbolTableMap = new HashMap<>();
 
     public Map<String, MethodSymbolTable> getMethodsSymbolTable() {
