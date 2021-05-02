@@ -210,6 +210,9 @@ public class BackendStage implements JasminBackend {
             case NOPER:
                 buildNoperInstruction(method, (SingleOpInstruction) instruction);
                 break;
+            case RETURN:
+                buildReturnInstruction(method, (ReturnInstruction) instruction);
+                break;
             default:
                 break;
         }
@@ -327,6 +330,18 @@ public class BackendStage implements JasminBackend {
 
     private void buildNoperInstruction(Method method, SingleOpInstruction instruction) {
         loadElement(method, instruction.getSingleOperand());
+    }
+
+    private void buildReturnInstruction(Method method, ReturnInstruction instruction) {
+        loadElement(method, instruction.getOperand());
+
+        ElementType type = instruction.getOperand().getType().getTypeOfElement();
+        if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
+            lineWithTabs().append("ireturn\n");
+        }
+        else if (type == ElementType.OBJECTREF) {
+            lineWithTabs().append("areturn\n");
+        }
     }
 
     private void loadElement(Method method, Element element) {
