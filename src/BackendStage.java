@@ -213,6 +213,12 @@ public class BackendStage implements JasminBackend {
             case RETURN:
                 buildReturnInstruction(method, (ReturnInstruction) instruction);
                 break;
+            case GETFIELD:
+                buildGetFieldInstruction(ollirClass, method, (GetFieldInstruction) instruction);
+                break;
+            case PUTFIELD:
+                buildPutFieldInstruction(ollirClass, method, (PutFieldInstruction) instruction);
+                break;
             default:
                 break;
         }
@@ -342,6 +348,28 @@ public class BackendStage implements JasminBackend {
         else if (type == ElementType.OBJECTREF) {
             lineWithTabs().append("areturn\n");
         }
+    }
+
+    private void buildGetFieldInstruction(ClassUnit ollirClass, Method method, GetFieldInstruction instruction) {
+        // Push a "this" reference onto the stack
+        loadElement(method, instruction.getFirstOperand());
+        
+        Operand field = (Operand) instruction.getSecondOperand();
+
+        lineWithTabs().append("getfield ").append(ollirClass.getClassName()).append("/").append(field.getName())
+                .append(" ").append(translateType(ollirClass, field.getType())).append("\n");
+    }
+
+    private void buildPutFieldInstruction(ClassUnit ollirClass, Method method, PutFieldInstruction instruction) {
+        // Push a "this" reference onto the stack
+        loadElement(method, instruction.getFirstOperand());
+        // Push the value that will be assigned to the field onto the stack
+        loadElement(method, instruction.getThirdOperand());
+
+        Operand field = (Operand) instruction.getSecondOperand();
+
+        lineWithTabs().append("putfield ").append(ollirClass.getClassName()).append("/").append(field.getName())
+                .append(" ").append(translateType(ollirClass, field.getType())).append("\n");
     }
 
     private void loadElement(Method method, Element element) {
