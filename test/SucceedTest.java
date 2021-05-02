@@ -9,13 +9,13 @@ import java.io.StringReader;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.jasmin.JasminResult;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.specs.util.SpecsIo;
 
 public class SucceedTest {
-    @Test
-    public void testHelloWorld() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/HelloWorld.jmm");
+    public void testSucceed(String path) {
+        String jmmCode = SpecsIo.getResource(path);
         JmmParserResult result = TestUtils.parse(jmmCode);
         TestUtils.noErrors(result.getReports());
 
@@ -27,22 +27,22 @@ public class SucceedTest {
 
         OptimizationStage optimizationStage = new OptimizationStage();
         OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
+
+        BackendStage backendStage = new BackendStage();
+        JasminResult jasminResult = backendStage.toJasmin(ollirResult);
+
+        System.out.println(jasminResult.getJasminCode());
+        jasminResult.run();
+    }
+
+    @Test
+    public void testHelloWorld() {
+        testSucceed("fixtures/public/HelloWorld.jmm");
     }
 
     @Test
     public void testSimple() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/Simple.jmm");
-        JmmParserResult result = TestUtils.parse(jmmCode);
-        TestUtils.noErrors(result.getReports());
-
-        AnalysisStage analysisStage = new AnalysisStage();
-        JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
-
-        System.out.println("Semantic reports: " + semanticsResult.getReports());
-        TestUtils.noErrors(semanticsResult.getReports());
-
-        OptimizationStage optimizationStage = new OptimizationStage();
-        OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
+        testSucceed("fixtures/public/Simple.jmm");
     }
 
     @Test
