@@ -25,6 +25,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         this.symbolTable = (JMMSymbolTable) symbolTable;
         importedClasses = symbolTable.getImports().stream().map(Utils::getImportedClass).collect(Collectors.toSet());
 
+        addVisit("Import", this::visitImport);
+
         addVisit("Class", this::visitClass);
         addVisit("Method", this::visitMethod);
         addVisit("Expression", this::visitExpression);
@@ -82,6 +84,11 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             visit(child, reports);
         }
 
+        return null;
+    }
+
+    public String visitImport(JmmNode node, List<Report> reports) {
+        ollirBuilder.append("import ").append(node.get("module")).append(";\n");
         return null;
     }
 
