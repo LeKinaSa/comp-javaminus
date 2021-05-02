@@ -1,6 +1,7 @@
 options {
     LOOKAHEAD = 1;
     FORCE_LA_CHECK = true;
+    NODE_SCOPE_HOOK = true;
 }
 
 PARSER_BEGIN(JMM)
@@ -20,6 +21,13 @@ public class JMM {
 
         root.dump(""); // prints the tree on the screen
     }
+
+    void jjtreeOpenNodeScope(Node n) {
+        ((SimpleNode) n).put("line", Integer.toString(getToken(1).beginLine));
+        ((SimpleNode) n).put("col", Integer.toString(getToken(1).beginColumn));       
+    }
+
+    void jjtreeCloseNodeScope(Node n) {}
 }
 
 PARSER_END(JMM)
@@ -221,7 +229,7 @@ void ExpressionNot() #void : {} {
 }
 
 void Primary() #void : { Token t; } {
-    <LPAR> Expression() <RPAR> PrimaryL()
+    <LPAR> ExpressionAssign() <RPAR> PrimaryL()
     | t = <INTEGER_LITERAL> { jjtThis.put("value", t.image); } #Int PrimaryL()
     | t = <IDENTIFIER> { jjtThis.put("name", t.image); } #Var PrimaryL()
     | <THIS> #This PrimaryL()
@@ -258,5 +266,5 @@ void Function() #Func : { Token t; } {
 }
 
 void Arguments() #Args : {} {
-    (Expression() (<COMMA> Expression())*)?
+    (ExpressionAssign() (<COMMA> ExpressionAssign())*)?
 }

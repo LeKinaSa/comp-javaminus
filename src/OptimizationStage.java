@@ -1,11 +1,15 @@
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
 import pt.up.fe.comp.jmm.ollir.JmmOptimization;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
+import pt.up.fe.comp.jmm.report.ReportType;
+import pt.up.fe.comp.jmm.report.Stage;
 import pt.up.fe.specs.util.SpecsIo;
 
 /**
@@ -25,16 +29,28 @@ public class OptimizationStage implements JmmOptimization {
 
     @Override
     public OllirResult toOllir(JmmSemanticsResult semanticsResult) {
+        if (TestUtils.getNumReports(semanticsResult.getReports(), ReportType.ERROR) > 0) {
+            var errorReport = new Report(ReportType.ERROR, Stage.LLIR, -1,
+                    "Started ollir generation but there are errors from previous stage");
+            return new OllirResult(semanticsResult, null, Arrays.asList(errorReport));
+        }
+
+        if (semanticsResult.getRootNode() == null) {
+            var errorReport = new Report(ReportType.ERROR, Stage.LLIR, -1,
+                    "Started ollir generation but AST root node is null");
+            return new OllirResult(semanticsResult, null, Arrays.asList(errorReport));
+        }
 
         JmmNode node = semanticsResult.getRootNode();
-
-        // Convert the AST to a String containing the equivalent OLLIR code
-        String ollirCode = ""; // Convert node ...
-
-        // More reports from this stage
         List<Report> reports = new ArrayList<>();
 
-        return new OllirResult(semanticsResult, ollirCode, reports);
+        StringBuilder ollirCode = new StringBuilder();
+
+        OllirVisitor ollirVisitor = new OllirVisitor(ollirCode, semanticsResult.getSymbolTable());
+        ollirVisitor.visit(node, reports);
+
+        System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
+        return new OllirResult(semanticsResult, ollirCode.toString(), reports);
     }
 
     @Override

@@ -8,3 +8,5 @@ comp2021-*.jar
 .settings/org.eclipse.buildship.core.prefs
 .classpath
 .project
+gradlew.bat
+gradle/*
