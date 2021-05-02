@@ -167,6 +167,12 @@ public class BackendStage implements JasminBackend {
         jasminBuilder.append(translateType(ollirClass, returnType)).append("\n");
         addTab();
 
+        if (!method.isConstructMethod()) {
+            // TODO: Temporary limits for checkpoint 2
+            lineWithTabs().append(".limit stack 99\n");
+            lineWithTabs().append(".limit locals 99\n");
+        }
+
         buildMethodBody(ollirClass, method);
 
         if (returnType.getTypeOfElement() == ElementType.VOID) {
@@ -199,7 +205,7 @@ public class BackendStage implements JasminBackend {
                 buildBinaryOpInstruction(method, (BinaryOpInstruction) instruction);
                 break;
             case CALL:
-                buildCallInstruction(ollirClass, (CallInstruction) instruction);
+                buildCallInstruction(ollirClass, method, (CallInstruction) instruction);
                 break;
             case NOPER:
                 buildNoperInstruction(method, (SingleOpInstruction) instruction);
@@ -255,40 +261,68 @@ public class BackendStage implements JasminBackend {
         }
     }
 
-    private void buildCallInstruction(ClassUnit ollirClass, CallInstruction instruction) {
+    private void buildCallInstruction(ClassUnit ollirClass, Method method, CallInstruction instruction) {
         Element firstArg = instruction.getFirstArg(),
                 secondArg = instruction.getSecondArg();
 
         ElementType firstArgType = firstArg.getType().getTypeOfElement();
 
-        if (firstArgType == ElementType.THIS) {
-            lineWithTabs().append(aloadInstruction(0)).append("\n");
-        }
+        StringBuilder invocationJasmin = new StringBuilder();
 
         if (instruction.getInvocationType() == CallType.NEW) {
             ClassType classType = (ClassType) firstArg.getType();
             lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
-            lineWithTabs().append("dup\n");
+            return;
         }
         else {
-            lineWithTabs().append(instruction.getInvocationType()).append(" ");
+            if (instruction.getInvocationType() != CallType.invokestatic) {
+                loadElement(method, firstArg);
+            }
+            invocationJasmin.append(instruction.getInvocationType()).append(" ");
         }
 
         if (secondArg != null && secondArg.isLiteral()) {
+            Operand firstOperand = (Operand) firstArg;
             LiteralElement literalElement = (LiteralElement) secondArg;
 
             if (literalElement.getLiteral().equals("\"<init>\"")) {
-                jasminBuilder.append("java/lang/Object/<init>()V\n");
+                if (firstArgType == ElementType.THIS) {
+                    invocationJasmin.append("java/lang/Object");
+                }
+                else {
+                    ClassType classType = (ClassType) firstOperand.getType();
+                    invocationJasmin.append(getQualifiedClassName(ollirClass, classType.getName()));
+                }
+                invocationJasmin.append("/<init>()V\n");
             }
             else {
-                Operand firstOperand = (Operand) firstArg;
-                String literal = literalElement.getLiteral();
+                String literal = literalElement.getLiteral(),
+                        methodName = literal.substring(1, literal.length() - 1);
 
-                // TODO: change hardcoded part: ()V
-                jasminBuilder.append(getQualifiedClassName(ollirClass, firstOperand.getName()))
-                        .append("/").append(literal.substring(1, literal.length() - 1)).append("()V\n");
+                String firstOperandClassName;
+
+                if (firstArgType == ElementType.CLASS) {
+                    firstOperandClassName = firstOperand.getName();
+                }
+                else {
+                    firstOperandClassName = ((ClassType) firstOperand.getType()).getName();
+                }
+
+                invocationJasmin.append(getQualifiedClassName(ollirClass, firstOperandClassName))
+                        .append("/").append(methodName).append("(");
+
+                // Push arguments for function call onto the stack and add them to the method descriptor
+                for (Element methodArg : instruction.getListOfOperands()) {
+                    loadElement(method, methodArg);
+                    invocationJasmin.append(translateType(ollirClass, methodArg.getType()));
+                }
+
+                invocationJasmin.append(")").append(translateType(ollirClass, instruction.getReturnType()))
+                        .append("\n");
             }
         }
+
+        lineWithTabs().append(invocationJasmin);
     }
 
     private void buildNoperInstruction(Method method, SingleOpInstruction instruction) {
@@ -305,9 +339,14 @@ public class BackendStage implements JasminBackend {
             Descriptor descriptor = method.getVarTable().get(operand.getName());
 
             if (descriptor != null) {
+                ElementType type = descriptor.getVarType().getTypeOfElement();
+
                 // Local variable
-                if (descriptor.getVarType().getTypeOfElement() == ElementType.INT32) {
+                if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
                     lineWithTabs().append(iloadInstruction(descriptor.getVirtualReg())).append("\n");
+                }
+                else if (type == ElementType.OBJECTREF || type == ElementType.THIS) {
+                    lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
                 }
             }
         }
