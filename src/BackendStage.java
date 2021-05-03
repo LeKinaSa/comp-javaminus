@@ -296,7 +296,12 @@ public class BackendStage implements JasminBackend {
 
             if (literalElement.getLiteral().equals("\"<init>\"")) {
                 if (firstArgType == ElementType.THIS) {
-                    invocationJasmin.append("java/lang/Object");
+                    if (ollirClass.getSuperClass() == null) {
+                        invocationJasmin.append("java/lang/Object");
+                    }
+                    else {
+                        invocationJasmin.append(ollirClass.getSuperClass());
+                    }
                 }
                 else {
                     ClassType classType = (ClassType) firstOperand.getType();

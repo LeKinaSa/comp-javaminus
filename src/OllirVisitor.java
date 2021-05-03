@@ -95,8 +95,13 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitClass(JmmNode node, List<Report> reports) {
         String className = node.get("name");
 
-        // TODO: how to do extends?
-        ollirBuilder.append(className).append(" {\n");
+        ollirBuilder.append(className);
+        Optional<String> extendClass = node.getOptional("extends");
+        if (extendClass.isPresent()) {
+            ollirBuilder.append(" extends ").append(node.get("extends"));
+        }
+        ollirBuilder.append(" {\n");
+        
         addTab();
 
         boolean constructorCreated = false;
