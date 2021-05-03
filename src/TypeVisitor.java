@@ -26,6 +26,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         addVisit("VarDecl", this::visitVariableDeclaration);
 
+        addVisit("Expression", this::visitExpression);
+
         addVisit("Add", this::visitArithmeticExpression);
         addVisit("Sub", this::visitArithmeticExpression);
         addVisit("Mul", this::visitArithmeticExpression);
@@ -39,6 +41,7 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         addVisit("Assign", this::visitAssignment);
 
         addVisit("Var", this::visitVariable);
+        addVisit("This", this::visitThis);
         addVisit("Size", this::visitSize);
         addVisit("ArrayAccess", this::visitArrayAccess);
 
@@ -51,6 +54,19 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         if (!primitiveTypes.contains(type) && !importedClasses.contains(type) && !type.equals(symbolTable.getClassName())) {
             String message = "The type \"" + type + "\" is missing";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
+        return null;
+    }
+
+    private Object visitExpression(JmmNode node, List<Report> reports) {
+        JmmNode child = node.getChildren().get(0);
+        Set<String> allowedExpressions = Set.of("Assign", "NewInstance");
+
+        if (node.getParent().getKind().equals("Statement") && !allowedExpressions.contains(child.getKind())
+            && !(child.getKind().equals("Dot") && child.getChildren().get(1).getKind().equals("Func"))) {
+            String message = "Not a valid statement.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
@@ -170,11 +186,13 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     }
 
     public Object visitVariable(JmmNode node, List<Report> reports) {
-        Optional<JmmNode> methodNode = node.getAncestor("Method");
+        Optional<JmmNode> optional = node.getAncestor("Method");
+        JmmNode methodNode;
 
         String signature;
-        if (methodNode.isPresent()) {
-            signature = Utils.generateMethodSignature(methodNode.get());
+        if (optional.isPresent()) {
+            methodNode = optional.get();
+            signature = Utils.generateMethodSignature(methodNode);
         }
         else {
             return null;
@@ -182,6 +200,12 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         String name = node.get("name");
         Symbol symbol = symbolTable.getSymbol(signature, name);
+
+        if (symbolTable.methodSymbolTableMap.get(signature).getLocalVariable(name) == null
+                && symbolTable.getField(name) != null && methodNode.get("name").equals("main")) {
+            String message = "The class field \"" + name + "\" cannot be accessed from a static context.";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
 
         JmmNode parentNode = node.getParent();
         if (parentNode.getNumChildren() == 2 && parentNode.getChildren().get(1).getKind().equals("Func")) {
@@ -206,6 +230,20 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         if (!initializedVariables.contains(name) && !symbolTable.methodSymbolTableMap.get(signature).parameters.contains(symbol)) {
             String message = "Error: variable " + name + " was used without being initialized.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
+        return null;
+    }
+
+    private Object visitThis(JmmNode node, List<Report> reports) {
+        Optional<JmmNode> optional = node.getAncestor("Method");
+
+        if (optional.isPresent()) {
+            JmmNode methodNode = optional.get();
+            if (methodNode.get("name").equals("main")) {
+                String message = "\"this\" cannot be referenced from a static context.";
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+            }
         }
 
         return null;
@@ -411,8 +449,4 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
         String argsWithCommas = methodSignature.substring(methodSignature.indexOf("(") + 1, methodSignature.indexOf(")"));
         return Arrays.asList(argsWithCommas.split(", "));
     }
-
-    /*public int getNumberOfArguments(String methodSignature) { // Number of commas is the number of arguments
-        return methodSignature.length() - methodSignature.replace(",", "").length() + 1;
-    }*/
 }

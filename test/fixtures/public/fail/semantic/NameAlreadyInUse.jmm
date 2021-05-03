@@ -1,0 +1,20 @@
+import io;
+import io;
+
+class NameAlreadyInUse {
+    int a;
+
+    public static void main(String[] args) {
+        int a;
+        boolean a;
+    }
+
+    public boolean a(int a, int a, int c) {
+        boolean c;
+        return true;
+    }
+
+    public boolean a(int a, int a, int c) {
+        return false;
+    }
+}

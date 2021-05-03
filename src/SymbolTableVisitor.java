@@ -9,8 +9,13 @@ import pt.up.fe.comp.jmm.report.Stage;
 
 import java.util.*;
 
+import jasmin.sym;
+
 public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
+
+    private final Set<String> fieldNames = new LinkedHashSet<>();
+    private final Map<String, Set<String>> parametersAndLocalVariablesMap = new HashMap<>();
 
     public SymbolTableVisitor(JMMSymbolTable symbolTable) {
         this.symbolTable = symbolTable;
@@ -27,7 +32,7 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
         if (!symbolTable.imports.add(module)) {
             String message = "The import " + module + " was already included";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
         return null;
@@ -35,9 +40,12 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
     private Object visitClass(JmmNode node, List<Report> reports) {
         symbolTable.setClassName(node.get("name"));
+
         Optional<String> extendClass = node.getOptional("extends");
-        if(extendClass.isPresent())
+        if (extendClass.isPresent()) {
             symbolTable.setSuperclassName(node.get("extends"));
+        }
+        
         return null;
     }
 
@@ -47,15 +55,18 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
         if (!symbolTable.methods.add(signature)) {
             String message = "Method with signature " + signature + " already exists";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
+        Set<String> names = new LinkedHashSet<>();
         Set<Symbol> parameters = new LinkedHashSet<>();
 
         if (node.get("name").equals("main")) {
+            names.add(node.get("cmdArgsName"));
             parameters.add(new Symbol(new Type("String", true), node.get("cmdArgsName")));
         }
 
+        parametersAndLocalVariablesMap.put(signature, names);
         symbolTable.methodSymbolTableMap.put(signature, new MethodSymbolTable(returnType, parameters, new LinkedHashSet<>()));
         return null;
     }
@@ -67,10 +78,11 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
         Symbol symbol = new Symbol(type, name);
 
         if (node.getParent().getKind().equals("Class")) { // Class field
-            if (!symbolTable.fields.add(symbol)) {
-                String message = "The field named " + name + " of type " + typeName + " in class " +
-                        node.getParent().get("name") + " already exists";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+            symbolTable.fields.add(symbol);
+
+            if (!fieldNames.add(name)) {
+                String message = "A field named " + name + " in class " + node.getParent().get("name") + " already exists";
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             }
         }
         else if (node.getParent().getKind().equals("Body")) { // Method local variable
@@ -78,13 +90,11 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
             if (methodNode.isPresent()) {
                 String signature = Utils.generateMethodSignature(methodNode.get());
+                symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol);
 
-                if (!symbolTable.methodSymbolTableMap.get(signature).addLocalVariable(symbol)
-                        || symbolTable.fields.contains(symbol)
-                        || symbolTable.methodSymbolTableMap.get(signature).parameters.contains(symbol)) {
-                    String message = "The variable named " + name + " of type " + typeName +
-                            " in the method with signature " + signature + " already exists";
-                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+                if (!parametersAndLocalVariablesMap.get(signature).add(name)) {
+                    String message = "A variable named " + name + " in the method with signature " + signature + " already exists";
+                    reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
                 }
             }
         }
@@ -101,12 +111,11 @@ public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object>
 
         if (methodNode.isPresent()) {
             String signature = Utils.generateMethodSignature(methodNode.get());
+            symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol);
 
-            if (!symbolTable.methodSymbolTableMap.get(signature).addParameter(symbol)
-                    || symbolTable.fields.contains(symbol)) {
-                String message = "The parameter " + name + " of type " + typeName +
-                        " in the method with signature " + signature + " already exists";
-                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, -1, message));
+            if (!parametersAndLocalVariablesMap.get(signature).add(name)) {
+                String message = "A parameter named " + name + " in the method with signature " + signature + " already exists";
+                reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             }
         }
 

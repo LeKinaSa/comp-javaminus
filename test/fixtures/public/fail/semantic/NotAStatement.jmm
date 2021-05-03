@@ -1,0 +1,12 @@
+
+class NotAStatement {
+    public static void main(String[] args) {
+        int b;
+        b = 1;
+        1 + 1;
+        true && false;
+        b;
+        this;
+        new int[10];
+    }
+}

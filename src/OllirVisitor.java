@@ -25,6 +25,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         this.symbolTable = (JMMSymbolTable) symbolTable;
         importedClasses = symbolTable.getImports().stream().map(Utils::getImportedClass).collect(Collectors.toSet());
 
+        addVisit("Import", this::visitImport);
+
         addVisit("Class", this::visitClass);
         addVisit("Method", this::visitMethod);
         addVisit("Expression", this::visitExpression);
@@ -85,11 +87,21 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         return null;
     }
 
+    public String visitImport(JmmNode node, List<Report> reports) {
+        ollirBuilder.append("import ").append(node.get("module")).append(";\n");
+        return null;
+    }
+
     public String visitClass(JmmNode node, List<Report> reports) {
         String className = node.get("name");
 
-        // TODO: how to do extends?
-        ollirBuilder.append(className).append(" {\n");
+        ollirBuilder.append(className);
+        Optional<String> extendClass = node.getOptional("extends");
+        if (extendClass.isPresent()) {
+            ollirBuilder.append(" extends ").append(node.get("extends"));
+        }
+        ollirBuilder.append(" {\n");
+        
         addTab();
 
         boolean constructorCreated = false;
