@@ -119,4 +119,14 @@ public class FailTest {
     public void testThisStaticContext() {
         testSemantic("fixtures/public/fail/semantic/ThisStaticContext.jmm");
     }
+
+    @Test
+    public void testNotAStatement() {
+        testSemantic("fixtures/public/fail/semantic/NotAStatement.jmm");
+    }
+
+    @Test
+    public void testNameAlreadyInUse() {
+        testSemantic("fixtures/public/fail/semantic/NameAlreadyInUse.jmm");
+    }
 }
