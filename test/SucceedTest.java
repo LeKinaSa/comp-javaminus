@@ -45,39 +45,45 @@ public class SucceedTest {
         testSucceed("fixtures/public/Simple.jmm");
     }
 
+    public void testSemantic(String path) {
+        String jmmCode = SpecsIo.getResource(path);
+        JmmParserResult result = TestUtils.parse(jmmCode);
+        TestUtils.noErrors(result.getReports());
+
+        AnalysisStage analysisStage = new AnalysisStage();
+        JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
+
+        System.out.println("Semantic reports: " + semanticsResult.getReports());
+        TestUtils.noErrors(semanticsResult.getReports());
+    }
+
     @Test
     public void testQuickSort() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/QuickSort.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/QuickSort.jmm");
     }
 
     @Test
     public void testLazySort() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/Lazysort.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/Lazysort.jmm");
     }
 
     @Test
     public void testFindMaximum() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/FindMaximum.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/FindMaximum.jmm");
     }
 
     @Test
     public void testLife() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/Life.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/Life.jmm");
     }
 
     @Test
     public void testMonteCarloPi() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/MonteCarloPi.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/MonteCarloPi.jmm");
     }
 
     @Test
     public void testTicTacToe() {
-        String jmmCode = SpecsIo.getResource("fixtures/public/TicTacToe.jmm");
-        TestUtils.noErrors(TestUtils.parse(jmmCode).getReports());
+        testSemantic("fixtures/public/TicTacToe.jmm");
     }
 }
