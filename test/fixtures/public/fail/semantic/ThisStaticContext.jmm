@@ -1,0 +1,11 @@
+
+class ThisStaticContext {
+    int a;
+
+    public static void main(String[] args) {
+        int b;
+        a = 1;
+        b = a;
+        this;
+    }
+}

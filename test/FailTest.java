@@ -114,4 +114,9 @@ public class FailTest {
     public void testSemanticVarUndef() {
         testSemantic("fixtures/public/fail/semantic/var_undef.jmm");
     }
+
+    @Test
+    public void testThisStaticContext() {
+        testSemantic("fixtures/public/fail/semantic/ThisStaticContext.jmm");
+    }
 }
