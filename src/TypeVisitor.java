@@ -26,6 +26,8 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         addVisit("VarDecl", this::visitVariableDeclaration);
 
+        addVisit("Expression", this::visitExpression);
+
         addVisit("Add", this::visitArithmeticExpression);
         addVisit("Sub", this::visitArithmeticExpression);
         addVisit("Mul", this::visitArithmeticExpression);
@@ -52,6 +54,19 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
 
         if (!primitiveTypes.contains(type) && !importedClasses.contains(type) && !type.equals(symbolTable.getClassName())) {
             String message = "The type \"" + type + "\" is missing";
+            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
+        }
+
+        return null;
+    }
+
+    private Object visitExpression(JmmNode node, List<Report> reports) {
+        JmmNode child = node.getChildren().get(0);
+        Set<String> allowedExpressions = Set.of("Assign", "NewInstance");
+
+        if (node.getParent().getKind().equals("Statement") && !allowedExpressions.contains(child.getKind())
+            && !(child.getKind().equals("Dot") && child.getChildren().get(1).getKind().equals("Func"))) {
+            String message = "Not a valid statement.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
