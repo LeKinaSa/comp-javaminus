@@ -142,10 +142,7 @@ public class Utils {
                 return new Type(arrayType.getName(), false);
             }
             case "This":
-                if (parentNode.getKind().equals("Dot")) { // this.method
-                    return getReturnType(symbolTable, methodSignature, parentNode.getChildren().get(1));
-                }
-                break;
+                return new Type(symbolTable.getClassName(), false);
             case "Var":
                 return getVariableType(symbolTable, methodSignature, node.get("name")); // Variable
             case "Dot": {
@@ -158,9 +155,7 @@ public class Utils {
                 else if (rightChild.getKind().equals("Func")) {
                     Type thisClassType = new Type(symbolTable.getClassName(), false);
 
-                    if (symbolTable.getSuper() == null
-                            && (leftChild.getKind().equals("This")
-                            || thisClassType.equals(getExpressionType(symbolTable, leftChild, methodSignature)))) {
+                    if (symbolTable.getSuper() == null && thisClassType.equals(getExpressionType(symbolTable, leftChild, methodSignature))) {
                         // Calling a method from this class on an instance of this class (lookup the return type of the method in the symbol table)
                         return getExpressionType(symbolTable, rightChild, methodSignature);
                     }
