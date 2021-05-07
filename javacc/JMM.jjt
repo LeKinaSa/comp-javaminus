@@ -169,7 +169,7 @@ void Statement() : {} {
 }
 
 void IfStatement() #If : {} {
-    <IF> <LPAR> Expression() #Condition <RPAR> Statement() #Then <ELSE> Statement() #Else
+    <IF> <LPAR> Expression() <RPAR> Statement() #Then <ELSE> Statement() #Else
 }
 
 void WhileStatement() #While : {} {
