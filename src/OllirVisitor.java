@@ -37,6 +37,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("VarDecl", this::visitVariableDeclaration);
 
         addVisit("If", this::visitIf);
+        addVisit("While", this::visitWhile);
 
         addVisit("Add", this::visitArithmeticOp);
         addVisit("Sub", this::visitArithmeticOp);
@@ -221,21 +222,48 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         JmmNode expressionNode = node.getChildren().get(0), thenNode = node.getChildren().get(1),
                 elseNode = node.getChildren().get(2);
         
-        String expressionOllir = visit(expressionNode);
+        String expressionOllir = visit(expressionNode, reports);
         lineWithTabs().append("if (").append(expressionOllir).append(") goto then").append(ifCount).append(";\n");
 
         addTab();
-        visit(elseNode);
+        visit(elseNode, reports);
         lineWithTabs().append("goto endif").append(ifCount).append(";\n");
         removeTab();
 
         lineWithTabs().append("then").append(ifCount).append(":\n");
 
         addTab();
-        visit(thenNode);
+        visit(thenNode, reports);
         removeTab();
 
         lineWithTabs().append("endif").append(ifCount).append(":\n");
+
+        return null;
+    }
+
+    public String visitWhile(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        whileStatementMap.computeIfPresent(signature, (key, count) -> count + 1);
+        int whileCount = whileStatementMap.get(signature);
+
+        JmmNode expressionNode = node.getChildren().get(0), bodyNode = node.getChildren().get(1);
+        String expressionOllir = visit(expressionNode, reports);
+
+        lineWithTabs().append("loop").append(whileCount).append(":\n");
+        
+        addTab();
+        lineWithTabs().append("if (").append(expressionOllir).append(") goto body").append(whileCount).append(";\n");
+        lineWithTabs().append("goto endloop").append(whileCount).append(";\n");
+        removeTab();
+
+        lineWithTabs().append("body").append(whileCount).append(":\n");
+
+        addTab();
+        visit(bodyNode, reports);
+        removeTab();
+
+        lineWithTabs().append("endloop").append(whileCount).append(":\n");
 
         return null;
     }
