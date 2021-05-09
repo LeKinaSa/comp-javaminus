@@ -265,6 +265,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         addTab();
         visit(bodyNode, reports);
+        lineWithTabs().append("goto loop").append(whileCount).append(";\n");
         removeTab();
 
         lineWithTabs().append("endloop").append(whileCount).append(":\n");
@@ -445,9 +446,11 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         if (node.getChildren().isEmpty()) return null;
 
         if (node.getNumChildren() > 1) {
+            // Several statements inside brackets
             for (JmmNode child : node.getChildren()) {
                 visit(child, reports);
             }
+            return null;
         }
 
         JmmNode child = node.getChildren().get(0);
