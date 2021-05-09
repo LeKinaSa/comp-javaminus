@@ -175,11 +175,6 @@ public class BackendStage implements JasminBackend {
 
         buildMethodBody(ollirClass, method);
 
-        if (returnType.getTypeOfElement() == ElementType.VOID) {
-            // Add explicit return for void functions
-            lineWithTabs().append("return").append("\n");
-        }
-
         removeTab();
         lineWithTabs().append(".end method\n\n");
     }
@@ -197,12 +192,19 @@ public class BackendStage implements JasminBackend {
     }
 
     private void buildInstruction(ClassUnit ollirClass, Method method, Instruction instruction) {
+        for (String label : method.getLabels(instruction)) {
+            jasminBuilder.append(label).append(":\n");
+        }
+
         switch (instruction.getInstType()) {
             case ASSIGN:
                 buildAssignInstruction(ollirClass, method, (AssignInstruction) instruction);
                 break;
             case BINARYOPER:
                 buildBinaryOpInstruction(method, (BinaryOpInstruction) instruction);
+                break;
+            case BRANCH:
+                buildBranchInstruction(method, (CondBranchInstruction) instruction);
                 break;
             case CALL:
                 buildCallInstruction(ollirClass, method, (CallInstruction) instruction);
@@ -266,6 +268,24 @@ public class BackendStage implements JasminBackend {
                 lineWithTabs().append("idiv\n");
                 break;                
             default:
+                break;
+        }
+    }
+
+    private void buildBranchInstruction(Method method, CondBranchInstruction instruction) {
+        Element leftOperand = instruction.getLeftOperand(),
+                rightOperand = instruction.getRightOperand();
+
+        Operation operation = instruction.getCondOperation();
+
+        switch (operation.getOpType()) {
+            case LTHI32:    // i32 < i32
+                break;
+            case ANDB:      // bool && bool
+                loadElement(method, leftOperand);
+                loadElement(method, rightOperand);
+                lineWithTabs().append("iand\n");
+                lineWithTabs().append("ifne ").append(instruction.getLabel()).append("\n");
                 break;
         }
     }
@@ -344,14 +364,21 @@ public class BackendStage implements JasminBackend {
     }
 
     private void buildReturnInstruction(Method method, ReturnInstruction instruction) {
-        loadElement(method, instruction.getOperand());
+        Element operand = instruction.getOperand();
 
-        ElementType type = instruction.getOperand().getType().getTypeOfElement();
-        if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-            lineWithTabs().append("ireturn\n");
+        if (operand != null) {
+            loadElement(method, operand);
+
+            ElementType type = operand.getType().getTypeOfElement();
+            if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
+                lineWithTabs().append("ireturn\n");
+            }
+            else if (type == ElementType.OBJECTREF) {
+                lineWithTabs().append("areturn\n");
+            }
         }
-        else if (type == ElementType.OBJECTREF) {
-            lineWithTabs().append("areturn\n");
+        else {
+            lineWithTabs().append("return\n");
         }
     }
 

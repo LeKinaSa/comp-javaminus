@@ -83,6 +83,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         lineWithTabs().append(".construct ").append(className).append("().V {\n");
         addTab();
         lineWithTabs().append("invokespecial(this, \"<init>\").V;\n");
+        lineWithTabs().append("ret.V;\n");
         removeTab();
         lineWithTabs().append("}\n");
     }
