@@ -212,6 +212,9 @@ public class BackendStage implements JasminBackend {
             case NOPER:
                 buildNoperInstruction(method, (SingleOpInstruction) instruction);
                 break;
+            case GOTO:
+                buildGotoInstruction((GotoInstruction) instruction);
+                break;
             case RETURN:
                 buildReturnInstruction(method, (ReturnInstruction) instruction);
                 break;
@@ -279,7 +282,10 @@ public class BackendStage implements JasminBackend {
         Operation operation = instruction.getCondOperation();
 
         switch (operation.getOpType()) {
-            case LTHI32:    // i32 < i32
+            case LTH:    // i32 < i32
+                loadElement(method, leftOperand);
+                loadElement(method, rightOperand);
+                lineWithTabs().append("if_icmplt ").append(instruction.getLabel()).append("\n");
                 break;
             case ANDB:      // bool && bool
                 loadElement(method, leftOperand);
@@ -361,6 +367,10 @@ public class BackendStage implements JasminBackend {
 
     private void buildNoperInstruction(Method method, SingleOpInstruction instruction) {
         loadElement(method, instruction.getSingleOperand());
+    }
+
+    private void buildGotoInstruction(GotoInstruction instruction) {
+        lineWithTabs().append("goto ").append(instruction.getLabel()).append("\n");
     }
 
     private void buildReturnInstruction(Method method, ReturnInstruction instruction) {
