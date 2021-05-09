@@ -13,9 +13,12 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     private final StringBuilder ollirBuilder;
     private final JMMSymbolTable symbolTable;
     private final StringBuilder tabs = new StringBuilder(); // Improves OLLIR code formatting
-    private final Map<String, Integer> tempVariablesMap = new HashMap<>();
 
-    private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/");
+    private final Map<String, Integer> tempVariablesMap = new HashMap<>(),
+            ifStatementsMap = new HashMap<>(),   // Number of if statements in a method
+            whileStatementMap = new HashMap<>(); // Number of while statements in a method
+
+    private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/", "LessThan", "<");
     private static final Map<String, String> booleanOpMap = Map.of("LessThan", "<", "And", "&&", "Not", "!");
 
     private final Set<String> importedClasses;
@@ -33,12 +36,15 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         addVisit("VarDecl", this::visitVariableDeclaration);
 
+        addVisit("If", this::visitIf);
+        addVisit("While", this::visitWhile);
+
         addVisit("Add", this::visitArithmeticOp);
         addVisit("Sub", this::visitArithmeticOp);
         addVisit("Mul", this::visitArithmeticOp);
         addVisit("Div", this::visitArithmeticOp);
 
-        addVisit("LessThan", this::visitBooleanOp);
+        addVisit("LessThan", this::visitArithmeticOp);
         addVisit("And", this::visitBooleanOp);
         addVisit("Not", this::visitBooleanOp);
 
@@ -51,7 +57,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         addVisit("Dot", this::visitDot);
         addVisit("NewInstance", this::visitNewInstance);
+        addVisit("NewArray", this::visitNewArray);
         addVisit("Return", this::visitReturn);
+
+        addVisit("ArrayAccess", this::visitArrayAccess);
 
         setDefaultVisit(this::defaultVisit);
     }
@@ -79,7 +88,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     }
 
     public String defaultVisit(JmmNode node, List<Report> reports) {
-        // Default visit is a simple post-order visit
+        // Default visit is a simple pre-order visit
         for (JmmNode child : node.getChildren()) {
             visit(child, reports);
         }
@@ -119,7 +128,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         if (!constructorCreated) {
             buildConstructor(className);
-            constructorCreated = true;
         }
 
         removeTab();
@@ -173,6 +181,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addTab();
 
         tempVariablesMap.put(signature, 0);
+        ifStatementsMap.put(signature, 0);
+        whileStatementMap.put(signature, 0);
 
         int bodyIdx = isMain ? 0 : 1;
         visit(node.getChildren().get(bodyIdx));
@@ -180,6 +190,9 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         // Visit Return node (if the method has one)
         if (!isMain) {
             visit(node.getChildren().get(bodyIdx + 1));
+        }
+        else {
+            lineWithTabs().append("ret.V;\n");
         }
 
         removeTab();
@@ -203,6 +216,61 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         return null;
     }
 
+    public String visitIf(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        ifStatementsMap.computeIfPresent(signature, (key, count) -> count + 1);
+        int ifCount = ifStatementsMap.get(signature);
+
+        JmmNode expressionNode = node.getChildren().get(0), thenNode = node.getChildren().get(1),
+                elseNode = node.getChildren().get(2);
+        
+        String expressionOllir = visit(expressionNode, reports);
+        lineWithTabs().append("if (").append(expressionOllir).append(") goto then").append(ifCount).append(";\n");
+
+        addTab();
+        visit(elseNode, reports);
+        lineWithTabs().append("goto endif").append(ifCount).append(";\n");
+        removeTab();
+
+        lineWithTabs().append("then").append(ifCount).append(":\n");
+
+        addTab();
+        visit(thenNode, reports);
+        removeTab();
+
+        lineWithTabs().append("endif").append(ifCount).append(":\n");
+
+        return null;
+    }
+
+    public String visitWhile(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        whileStatementMap.computeIfPresent(signature, (key, count) -> count + 1);
+        int whileCount = whileStatementMap.get(signature);
+
+        JmmNode expressionNode = node.getChildren().get(0), bodyNode = node.getChildren().get(1);
+        String expressionOllir = visit(expressionNode, reports);
+
+        lineWithTabs().append("loop").append(whileCount).append(":\n");
+        
+        addTab();
+        lineWithTabs().append("if (").append(expressionOllir).append(") goto body").append(whileCount).append(";\n");
+        lineWithTabs().append("goto endloop").append(whileCount).append(";\n");
+        removeTab();
+
+        lineWithTabs().append("body").append(whileCount).append(":\n");
+
+        addTab();
+        visit(bodyNode, reports);
+        removeTab();
+
+        lineWithTabs().append("endloop").append(whileCount).append(":\n");
+
+        return null;
+    }
+
     public String visitArithmeticOp(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
 
@@ -213,7 +281,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         arithmeticBuilder.append(" ").append(arithmeticOpMap.get(node.getKind())).append(".i32 ");
         arithmeticBuilder.append(visit(rightChild));
 
-        if (node.getParent().getKind().equals("Expression") || node.getParent().getKind().equals("Assign")) {
+        JmmNode parentNode = node.getParent();
+        // Node kinds that can deal with a binary operation
+        Set<String> acceptedParents = Set.of("Expression", "Assign");
+        if (acceptedParents.contains(parentNode.getKind())) {
             return arithmeticBuilder.toString();
         }
 
@@ -246,7 +317,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         booleanBuilder.append(" ").append(booleanOpMap.get(node.getKind())).append(".bool ");
         booleanBuilder.append(visit(rightChild));
 
-        if (node.getParent().getKind().equals("Expression") || node.getParent().getKind().equals("Assign")) {
+        JmmNode parentNode = node.getParent();
+        // Node kinds that can deal with a binary operation
+        Set<String> acceptedParents = Set.of("Expression", "Assign");
+        if (acceptedParents.contains(parentNode.getKind())) {
             return booleanBuilder.toString();
         }
 
@@ -317,9 +391,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     }
 
     public String visitAssignment(JmmNode node, List<Report> reports) {
-        // TODO: Array assignments
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         JmmNode variable = node.getChildren().get(0), expression = node.getChildren().get(1);
+
+        StringBuilder assignmentBuilder = new StringBuilder();
 
         if (variable.getKind().equals("Var")) {
             Symbol symbol = symbolTable.getSymbol(signature, variable.get("name"));
@@ -327,7 +402,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             String convertedType = convertType(type);
 
             String finalVariable;
-            StringBuilder assignmentBuilder = new StringBuilder();
 
             if (symbolTable.fields.contains(symbol)) {
                 // We are assigning to a field, therefore we must use putfield
@@ -349,16 +423,16 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 finalVariable = visit(variable, reports);
                 assignmentBuilder.append(finalVariable).append(" :=.").append(convertedType).append(" ").append(visit(expression, reports));
             }
-
-            /*
-                c1.myClass :=.myClass new(myClass,3.i32).myClass;
-                c1.myClass :=.myClass new(myClass,3.i32).myClass;
-                invokespecial(c1.myClass,"<init>").V; // myClass c1 = new myClass(3);
-            */
             
             if (expression.getKind().equals("NewInstance")) {
                 assignmentBuilder.append(";\n").append(tabs).append("invokespecial(").append(finalVariable).append(", \"<init>\").V");
             }
+
+            return assignmentBuilder.toString();
+        }
+        else if (variable.getKind().equals("ArrayAccess")) {
+            String arrayAccessOllir = visit(variable, reports);
+            assignmentBuilder.append(arrayAccessOllir).append(" :=.i32 ").append(visit(expression, reports));
 
             return assignmentBuilder.toString();
         }
@@ -367,15 +441,22 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     }
 
     public String visitStatement(JmmNode node, List<Report> reports) {
+        if (node.getChildren().isEmpty()) return null;
+
         if (node.getNumChildren() > 1) {
             for (JmmNode child : node.getChildren()) {
                 visit(child, reports);
             }
         }
 
-        // TODO: If and While statements
-        String expressionResult = visit(node.getChildren().get(0));
-        lineWithTabs().append(expressionResult).append(";\n");
+        JmmNode child = node.getChildren().get(0);
+        if (child.getKind().equals("Expression")) {
+            String expressionResult = visit(node.getChildren().get(0));
+            lineWithTabs().append(expressionResult).append(";\n");
+        }
+        else {
+            visit(child, reports);
+        }
 
         return null;
     }
@@ -383,9 +464,9 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitDot(JmmNode node, List<Report> reports) {
         StringBuilder dotBuilder = new StringBuilder();
 
-        // TODO: Array length
         String signature = Utils.generateMethodSignatureFromChildNode(node);
 
+        JmmNode parentNode = node.getParent();
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
 
@@ -445,7 +526,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             dotBuilder.append(").").append(convertedType);
 
-            JmmNode parentNode = node.getParent();
             if (parentNode.getKind().equals("Expression") || parentNode.getKind().equals("Assign")) {
                 return dotBuilder.toString();
             }
@@ -456,6 +536,21 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(dotBuilder).append(";\n");
             return tempVar;
         }
+        else if (rightChild.getKind().equals("Length")) {
+            dotBuilder.append("arraylength(");
+            String arrayOllir = visit(leftChild, reports);
+            dotBuilder.append(arrayOllir).append(").i32");
+
+            if (parentNode.getKind().equals("Assign")) {
+                return dotBuilder.toString();
+            }
+
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
+
+            lineWithTabs().append(tempVar).append(" :=.i32 ").append(dotBuilder.toString()).append(";\n");
+            return tempVar;
+        }
 
         return null;
     }
@@ -463,15 +558,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitNewInstance(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         String className = node.get("class");
-
-        /*
-            io.println(new Fac().compFac(10));
-
-            aux1.Fac :=.Fac new(Fac).Fac;
-            invokespecial(aux1.Fac,"<init>").V;
-            aux2.i32 :=.i32 invokevirtual(aux1.Fac,"compFac",10.i32).i32;
-            invokestatic(io, "println", aux2.i3).V;
-        */
 
         StringBuilder newInstanceBuilder = new StringBuilder();
         newInstanceBuilder.append("new(").append(className).append(").").append(className);
@@ -490,6 +576,28 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         return tempVar;
     }
 
+    public String visitNewArray(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode parentNode = node.getParent();
+        JmmNode sizeNode = node.getChildren().get(0);
+
+        String sizeExpressionOllir = visit(sizeNode.getChildren().get(0), reports);
+        StringBuilder newArrayBuilder = new StringBuilder();
+
+        newArrayBuilder.append("new(array, ").append(sizeExpressionOllir).append(").array.i32");
+
+        if (parentNode.getKind().equals("Assign")) {
+            return newArrayBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".array.i32";
+
+        lineWithTabs().append(tempVar).append(" :=.array.i32 ").append(newArrayBuilder).append(";\n");
+        return tempVar;
+    }
+
     public String visitReturn(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         Type returnType = symbolTable.getReturnType(signature);
@@ -498,5 +606,32 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         lineWithTabs().append("ret.").append(convertType(returnType)).append(" ").append(expressionOllir).append(";\n");
         return null;
+    }
+
+    public String visitArrayAccess(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode arrayNode = node.getChildren().get(0),
+                indexNode = node.getChildren().get(1),
+                parentNode = node.getParent();
+        
+        String arrayOllir = visit(arrayNode, reports);
+        String indexOllir = visit(indexNode, reports);
+
+        // Remove type information from the array variable (to conform with the OLLIR specification)
+        arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf("."));
+
+        StringBuilder arrayAccessBuilder = new StringBuilder();
+        arrayAccessBuilder.append(arrayOllir).append("[").append(indexOllir).append("].i32");
+
+        if (parentNode.getKind().equals("Assign")) {
+            return arrayAccessBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
+
+        lineWithTabs().append(tempVar).append(" :=.i32 ").append(arrayAccessBuilder).append(";\n");
+        return tempVar;
     }
 }

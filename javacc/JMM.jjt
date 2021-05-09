@@ -169,12 +169,12 @@ void Statement() : {} {
 }
 
 void IfStatement() #If : {} {
-    <IF> <LPAR> Expression() #Condition <RPAR> Statement() #Then <ELSE> Statement() #Else
+    <IF> <LPAR> Expression() <RPAR> Statement() #Then <ELSE> Statement() #Else
 }
 
 void WhileStatement() #While : {} {
     try {
-        <WHILE> <LPAR> Expression() #Condition <RPAR>
+        <WHILE> <LPAR> Expression() <RPAR>
     }
     catch (ParseException ex) {
         Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.endLine, ex.getMessage()));
