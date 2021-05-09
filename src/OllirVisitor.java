@@ -57,6 +57,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         addVisit("Dot", this::visitDot);
         addVisit("NewInstance", this::visitNewInstance);
+        addVisit("NewArray", this::visitNewArray);
         addVisit("Return", this::visitReturn);
 
         setDefaultVisit(this::defaultVisit);
@@ -461,9 +462,9 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitDot(JmmNode node, List<Report> reports) {
         StringBuilder dotBuilder = new StringBuilder();
 
-        // TODO: Array length
         String signature = Utils.generateMethodSignatureFromChildNode(node);
 
+        JmmNode parentNode = node.getParent();
         JmmNode leftChild = node.getChildren().get(0);
         JmmNode rightChild = node.getChildren().get(1);
 
@@ -523,7 +524,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             dotBuilder.append(").").append(convertedType);
 
-            JmmNode parentNode = node.getParent();
             if (parentNode.getKind().equals("Expression") || parentNode.getKind().equals("Assign")) {
                 return dotBuilder.toString();
             }
@@ -534,6 +534,21 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(dotBuilder).append(";\n");
             return tempVar;
         }
+        else if (rightChild.getKind().equals("Length")) {
+            dotBuilder.append("arraylength(");
+            String arrayOllir = visit(leftChild, reports);
+            dotBuilder.append(arrayOllir).append(").i32");
+
+            if (parentNode.getKind().equals("Assign")) {
+                return dotBuilder.toString();
+            }
+
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
+
+            lineWithTabs().append(tempVar).append(" :=.i32 ").append(dotBuilder.toString()).append(";\n");
+            return tempVar;
+        }
 
         return null;
     }
@@ -541,15 +556,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     public String visitNewInstance(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         String className = node.get("class");
-
-        /*
-            io.println(new Fac().compFac(10));
-
-            aux1.Fac :=.Fac new(Fac).Fac;
-            invokespecial(aux1.Fac,"<init>").V;
-            aux2.i32 :=.i32 invokevirtual(aux1.Fac,"compFac",10.i32).i32;
-            invokestatic(io, "println", aux2.i3).V;
-        */
 
         StringBuilder newInstanceBuilder = new StringBuilder();
         newInstanceBuilder.append("new(").append(className).append(").").append(className);
@@ -565,6 +571,28 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 .append(newInstanceBuilder).append(";\n");
         lineWithTabs().append("invokespecial(").append(tempVar).append(", \"<init>\").V;\n");
 
+        return tempVar;
+    }
+
+    public String visitNewArray(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode parentNode = node.getParent();
+        JmmNode sizeNode = node.getChildren().get(0);
+
+        String sizeExpressionOllir = visit(sizeNode.getChildren().get(0), reports);
+        StringBuilder newArrayBuilder = new StringBuilder();
+
+        newArrayBuilder.append("new(array, ").append(sizeExpressionOllir).append(").array.i32");
+
+        if (parentNode.getKind().equals("Assign")) {
+            return newArrayBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".array.i32";
+
+        lineWithTabs().append(tempVar).append(" :=.array.i32 ").append(newArrayBuilder).append(";\n");
         return tempVar;
     }
 
