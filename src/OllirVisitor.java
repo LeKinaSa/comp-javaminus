@@ -60,6 +60,8 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("NewArray", this::visitNewArray);
         addVisit("Return", this::visitReturn);
 
+        addVisit("ArrayAccess", this::visitArrayAccess);
+
         setDefaultVisit(this::defaultVisit);
     }
 
@@ -389,9 +391,10 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
     }
 
     public String visitAssignment(JmmNode node, List<Report> reports) {
-        // TODO: Array assignments
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         JmmNode variable = node.getChildren().get(0), expression = node.getChildren().get(1);
+
+        StringBuilder assignmentBuilder = new StringBuilder();
 
         if (variable.getKind().equals("Var")) {
             Symbol symbol = symbolTable.getSymbol(signature, variable.get("name"));
@@ -399,7 +402,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             String convertedType = convertType(type);
 
             String finalVariable;
-            StringBuilder assignmentBuilder = new StringBuilder();
 
             if (symbolTable.fields.contains(symbol)) {
                 // We are assigning to a field, therefore we must use putfield
@@ -421,16 +423,17 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 finalVariable = visit(variable, reports);
                 assignmentBuilder.append(finalVariable).append(" :=.").append(convertedType).append(" ").append(visit(expression, reports));
             }
-
-            /*
-                c1.myClass :=.myClass new(myClass,3.i32).myClass;
-                c1.myClass :=.myClass new(myClass,3.i32).myClass;
-                invokespecial(c1.myClass,"<init>").V; // myClass c1 = new myClass(3);
-            */
             
             if (expression.getKind().equals("NewInstance")) {
                 assignmentBuilder.append(";\n").append(tabs).append("invokespecial(").append(finalVariable).append(", \"<init>\").V");
             }
+
+            return assignmentBuilder.toString();
+        }
+        else if (variable.getKind().equals("ArrayAccess")) {
+            // TODO: assign field arrays?
+            String arrayAccessOllir = visit(variable, reports);
+            assignmentBuilder.append(arrayAccessOllir).append(" :=.i32 ").append(visit(expression, reports));
 
             return assignmentBuilder.toString();
         }
@@ -604,5 +607,32 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         lineWithTabs().append("ret.").append(convertType(returnType)).append(" ").append(expressionOllir).append(";\n");
         return null;
+    }
+
+    public String visitArrayAccess(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode arrayNode = node.getChildren().get(0),
+                indexNode = node.getChildren().get(1),
+                parentNode = node.getParent();
+        
+        String arrayOllir = visit(arrayNode, reports);
+        String indexOllir = visit(indexNode, reports);
+
+        // Remove type information from the array variable (to conform with the OLLIR specification)
+        arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf("."));
+
+        StringBuilder arrayAccessBuilder = new StringBuilder();
+        arrayAccessBuilder.append(arrayOllir).append("[").append(indexOllir).append("].i32");
+
+        if (parentNode.getKind().equals("Assign")) {
+            return arrayAccessBuilder.toString();
+        }
+
+        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
+
+        lineWithTabs().append(tempVar).append(" :=.i32 ").append(arrayAccessBuilder).append(";\n");
+        return tempVar;
     }
 }
