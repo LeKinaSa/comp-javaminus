@@ -431,7 +431,6 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return assignmentBuilder.toString();
         }
         else if (variable.getKind().equals("ArrayAccess")) {
-            // TODO: assign field arrays?
             String arrayAccessOllir = visit(variable, reports);
             assignmentBuilder.append(arrayAccessOllir).append(" :=.i32 ").append(visit(expression, reports));
 
