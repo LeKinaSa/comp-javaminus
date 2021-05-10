@@ -1,5 +1,7 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
 
 import org.specs.comp.ollir.*;
@@ -26,6 +28,8 @@ import pt.up.fe.comp.jmm.report.Stage;
 public class BackendStage implements JasminBackend {
     private final StringBuilder jasminBuilder = new StringBuilder(),
             tabs = new StringBuilder(); // Improves Jasmin code formatting
+    
+    private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
 
     @Override
     public JasminResult toJasmin(OllirResult ollirResult) {
@@ -149,6 +153,8 @@ public class BackendStage implements JasminBackend {
     }
 
     private void buildMethod(ClassUnit ollirClass, Method method) {
+        booleanOperationsMap.put(method, 0);
+
         Type returnType = method.getReturnType();
 
         lineWithTabs().append(".method ");
@@ -224,6 +230,9 @@ public class BackendStage implements JasminBackend {
             case PUTFIELD:
                 buildPutFieldInstruction(ollirClass, method, (PutFieldInstruction) instruction);
                 break;
+            case UNARYOPER:
+                buildUnaryOpInstruction(method, (UnaryOpInstruction) instruction);
+                break;
             default:
                 break;
         }
@@ -269,7 +278,22 @@ public class BackendStage implements JasminBackend {
                 break;
             case DIV:
                 lineWithTabs().append("idiv\n");
-                break;                
+                break;
+            case LTH: {
+                Integer boolOpCount = booleanOperationsMap.computeIfPresent(method, (key, count) -> count + 1);
+
+                lineWithTabs().append("if_icmplt bop").append(boolOpCount).append("\n");
+                lineWithTabs().append(iconstInstruction(0)).append("\n");
+                lineWithTabs().append("goto endbop").append(boolOpCount).append("\n");
+                jasminBuilder.append("bop").append(boolOpCount).append(":\n");
+                lineWithTabs().append(iconstInstruction(1)).append("\n");
+                jasminBuilder.append("endbop").append(boolOpCount).append(":\n");
+
+                break;
+            }
+            case ANDB:
+                lineWithTabs().append("iand\n");
+                break;
             default:
                 break;
         }
@@ -292,6 +316,8 @@ public class BackendStage implements JasminBackend {
                 loadElement(method, rightOperand);
                 lineWithTabs().append("iand\n");
                 lineWithTabs().append("ifne ").append(instruction.getLabel()).append("\n");
+                break;
+            default:
                 break;
         }
     }
@@ -412,6 +438,30 @@ public class BackendStage implements JasminBackend {
 
         lineWithTabs().append("putfield ").append(ollirClass.getClassName()).append("/").append(field.getName())
                 .append(" ").append(translateType(ollirClass, field.getType())).append("\n");
+    }
+
+    private void buildUnaryOpInstruction(Method method, UnaryOpInstruction instruction) {
+        Element rightElement = instruction.getRightOperand();
+        Operation operation = instruction.getUnaryOperation();
+
+        loadElement(method, rightElement);
+
+        switch (operation.getOpType()) {
+            case NOTB: {
+                Integer boolOpCount = booleanOperationsMap.computeIfPresent(method, (key, count) -> count + 1);
+
+                lineWithTabs().append("ifne bop").append(boolOpCount).append("\n");
+                lineWithTabs().append(iconstInstruction(1)).append("\n");
+                lineWithTabs().append("goto endbop").append(boolOpCount).append("\n");
+                jasminBuilder.append("bop").append(boolOpCount).append(":\n");
+                lineWithTabs().append(iconstInstruction(0)).append("\n");
+                jasminBuilder.append("endbop").append(boolOpCount).append(":\n");
+
+                break;
+            }
+            default:
+                break;
+        }
     }
 
     private void loadElement(Method method, Element element) {
