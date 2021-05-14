@@ -3,6 +3,8 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.specs.comp.ollir.*;
 
@@ -30,6 +32,7 @@ public class BackendStage implements JasminBackend {
             tabs = new StringBuilder(); // Improves Jasmin code formatting
     
     private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
+    private static int stackSize = 0;
 
     @Override
     public JasminResult toJasmin(OllirResult ollirResult) {
@@ -152,6 +155,14 @@ public class BackendStage implements JasminBackend {
         jasminBuilder.append("\n");
     }
 
+    private int getLocalsLimit(Method method) {
+        Set<Integer> usedRegisters = new HashSet<>();
+        for (Descriptor var : method.getVarTable().values()) {
+            usedRegisters.add(var.getVirtualReg());
+        }
+        return usedRegisters.size();
+    }
+
     private void buildMethod(ClassUnit ollirClass, Method method) {
         booleanOperationsMap.put(method, 0);
 
@@ -174,9 +185,9 @@ public class BackendStage implements JasminBackend {
         addTab();
 
         if (!method.isConstructMethod()) {
-            // TODO: Temporary limits for checkpoint 2
-            lineWithTabs().append(".limit stack 99\n");
-            lineWithTabs().append(".limit locals 99\n");
+            stackSize = 99; // TODO: stackSize
+            lineWithTabs().append(".limit stack ").append(stackSize).append("\n"); // TODO: can only be added after the method body?
+            lineWithTabs().append(".limit locals ").append(getLocalsLimit(method)).append("\n");
         }
 
         buildMethodBody(ollirClass, method);
@@ -249,11 +260,17 @@ public class BackendStage implements JasminBackend {
             ElementType type = descriptor.getVarType().getTypeOfElement();
 
             // Local variable
-            if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-                lineWithTabs().append(istoreInstruction(descriptor.getVirtualReg())).append("\n");
-            }
-            else if (type == ElementType.OBJECTREF) {
-                lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+            switch (type) {
+                case BOOLEAN:
+                case INT32:
+                    lineWithTabs().append(istoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    break;
+                case ARRAYREF:
+                case OBJECTREF:
+                    lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -331,9 +348,21 @@ public class BackendStage implements JasminBackend {
         StringBuilder invocationJasmin = new StringBuilder();
 
         if (instruction.getInvocationType() == CallType.NEW) {
-            ClassType classType = (ClassType) firstArg.getType();
-            lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
-            return;
+            switch (firstArg.getType().getTypeOfElement()) {
+                case CLASS: {
+                    ClassType classType = (ClassType) firstArg.getType();
+                    lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
+                    return;
+                }
+                case ARRAYREF: {
+                    Element sizeOperand = instruction.getListOfOperands().get(0);
+                    loadElement(method, sizeOperand);
+                    lineWithTabs().append("newarray int\n"); // New arrays in J-- can only be one-dimensional int arrays
+                    return;
+                }
+                default:
+                    break;
+            }
         }
         else {
             if (instruction.getInvocationType() != CallType.invokestatic) {

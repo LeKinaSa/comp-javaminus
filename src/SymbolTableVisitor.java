@@ -9,8 +9,6 @@ import pt.up.fe.comp.jmm.report.Stage;
 
 import java.util.*;
 
-import jasmin.sym;
-
 public class SymbolTableVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
 

@@ -250,7 +250,7 @@ void ExpressionNew() #void : {} {
 }
 
 void NewArray() : {} {
-    <INT> <LSQBR> Expression() #Size <RSQBR>
+    <INT> <LSQBR> ExpressionAssign() #Size <RSQBR>
 }
 
 void NewInstance() : { Token t; } {
