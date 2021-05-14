@@ -28,7 +28,7 @@ import pt.up.fe.comp.jmm.report.Stage;
  */
 
 public class BackendStage implements JasminBackend {
-    private final StringBuilder jasminBuilder = new StringBuilder(),
+    private StringBuilder jasminBuilder = new StringBuilder(),
             tabs = new StringBuilder(); // Improves Jasmin code formatting
     
     private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
@@ -184,13 +184,24 @@ public class BackendStage implements JasminBackend {
         jasminBuilder.append(translateType(ollirClass, returnType)).append("\n");
         addTab();
 
+        StringBuilder savedJasminBuilder = null;
         if (!method.isConstructMethod()) {
-            stackSize = 99; // TODO: stackSize
-            lineWithTabs().append(".limit stack ").append(stackSize).append("\n"); // TODO: can only be added after the method body?
-            lineWithTabs().append(".limit locals ").append(getLocalsLimit(method)).append("\n");
+            // Method should be on a different builder
+            savedJasminBuilder = jasminBuilder;
+            jasminBuilder = new StringBuilder();
+            stackSize = 99; // TODO
         }
 
         buildMethodBody(ollirClass, method);
+
+        if (!method.isConstructMethod()) {
+            // Method stored in an auxiliary builder
+            StringBuilder methodJasminBuilder = jasminBuilder;
+            jasminBuilder = savedJasminBuilder;
+            lineWithTabs().append(".limit stack ").append(stackSize).append("\n");
+            lineWithTabs().append(".limit locals ").append(getLocalsLimit(method)).append("\n");
+            jasminBuilder.append(methodJasminBuilder);
+        }
 
         removeTab();
         lineWithTabs().append(".end method\n\n");
