@@ -33,6 +33,7 @@ public class BackendStage implements JasminBackend {
     
     private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
     private static int stackSize = 0;
+    private static int maxStackSize = 0;
 
     @Override
     public JasminResult toJasmin(OllirResult ollirResult) {
@@ -189,7 +190,8 @@ public class BackendStage implements JasminBackend {
             // Method should be on a different builder
             savedJasminBuilder = jasminBuilder;
             jasminBuilder = new StringBuilder();
-            stackSize = 99; // TODO
+            stackSize = 0;
+            maxStackSize = 0;
         }
 
         buildMethodBody(ollirClass, method);
@@ -198,7 +200,7 @@ public class BackendStage implements JasminBackend {
             // Method stored in an auxiliary builder
             StringBuilder methodJasminBuilder = jasminBuilder;
             jasminBuilder = savedJasminBuilder;
-            lineWithTabs().append(".limit stack ").append(stackSize).append("\n");
+            lineWithTabs().append(".limit stack ").append(maxStackSize).append("\n");
             lineWithTabs().append(".limit locals ").append(getLocalsLimit(method)).append("\n");
             jasminBuilder.append(methodJasminBuilder);
         }
@@ -315,15 +317,19 @@ public class BackendStage implements JasminBackend {
 
         switch (operation.getOpType()) {
             case ADD:
+                updateStackSize(-1);
                 lineWithTabs().append("iadd\n");
                 break;
             case SUB:
+                updateStackSize(-1);
                 lineWithTabs().append("isub\n");
                 break;
             case MUL:
+                updateStackSize(-1);
                 lineWithTabs().append("imul\n");
                 break;
             case DIV:
+                updateStackSize(-1);
                 lineWithTabs().append("idiv\n");
                 break;
             case LTH: {
@@ -552,6 +558,7 @@ public class BackendStage implements JasminBackend {
                         Element index = arrayOperand.getIndexOperands().get(0);
                         loadElement(method, index);
 
+                        updateStackSize(-1);
                         lineWithTabs().append("iaload\n");
                         break;
                     }
@@ -562,6 +569,7 @@ public class BackendStage implements JasminBackend {
 
     // Instructions
     private String aloadInstruction(int index) {
+        updateStackSize(1);
         if (index <= 3) {
             return "aload_" + index;
         }
@@ -569,6 +577,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String astoreInstruction(int index) {
+        updateStackSize(-1);
         if (index <= 3) {
             return "astore_" + index;
         }
@@ -576,6 +585,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String iloadInstruction(int index) {
+        updateStackSize(1);
         if (index <= 3) {
             return "iload_" + index;
         }
@@ -583,6 +593,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String istoreInstruction(int index) {
+        updateStackSize(-1);
         if (index <= 3) {
             return "istore_" + index;
         }
@@ -590,6 +601,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String iconstInstruction(int constant) {
+        updateStackSize(1);
         if (constant == -1) return "iconst_m1";
         if (constant >= 0 && constant <= 5) {
             return "iconst_" + constant;
@@ -605,4 +617,13 @@ public class BackendStage implements JasminBackend {
 
         return "ldc " + constant;
     }
+
+    // Stack Size
+    private static void updateStackSize(int increment) {
+        stackSize = stackSize + increment;
+        if (stackSize > maxStackSize) {
+            maxStackSize = stackSize;
+        }
+    }
+
 }
