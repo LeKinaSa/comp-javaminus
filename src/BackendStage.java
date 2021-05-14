@@ -28,8 +28,8 @@ import pt.up.fe.comp.jmm.report.Stage;
  */
 
 public class BackendStage implements JasminBackend {
-    private StringBuilder jasminBuilder = new StringBuilder(),
-            tabs = new StringBuilder(); // Improves Jasmin code formatting
+    private StringBuilder jasminBuilder = new StringBuilder();
+    private final StringBuilder tabs = new StringBuilder(); // Improves Jasmin code formatting
     
     private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
     private static int stackSize = 0;
@@ -201,7 +201,12 @@ public class BackendStage implements JasminBackend {
             StringBuilder methodJasminBuilder = jasminBuilder;
             jasminBuilder = savedJasminBuilder;
             lineWithTabs().append(".limit stack ").append(maxStackSize).append("\n");
-            lineWithTabs().append(".limit locals ").append(getLocalsLimit(method)).append("\n");
+
+            int numLocals = getLocalsLimit(method);
+            // "this" is not explicitly present in the var table unless the function uses the keyword
+            if (!method.isStaticMethod() && !method.getVarTable().containsKey("this")) numLocals += 1;
+
+            lineWithTabs().append(".limit locals ").append(numLocals).append("\n");
             jasminBuilder.append(methodJasminBuilder);
         }
 
@@ -295,6 +300,7 @@ public class BackendStage implements JasminBackend {
                         lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
                     }
                     else {
+                        updateStackSize(-3);
                         lineWithTabs().append("iastore\n");
                     }
                     break;
@@ -345,6 +351,7 @@ public class BackendStage implements JasminBackend {
                 break;
             }
             case ANDB:
+                updateStackSize(-1);
                 lineWithTabs().append("iand\n");
                 break;
             default:
@@ -367,6 +374,7 @@ public class BackendStage implements JasminBackend {
             case ANDB:      // bool && bool
                 loadElement(method, leftOperand);
                 loadElement(method, rightOperand);
+                updateStackSize(-1);
                 lineWithTabs().append("iand\n");
                 lineWithTabs().append("ifne ").append(instruction.getLabel()).append("\n");
                 break;
@@ -385,8 +393,10 @@ public class BackendStage implements JasminBackend {
 
         if (instruction.getInvocationType() == CallType.NEW) {
             switch (firstArg.getType().getTypeOfElement()) {
+                case OBJECTREF:
                 case CLASS: {
                     ClassType classType = (ClassType) firstArg.getType();
+                    updateStackSize(1);
                     lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
                     return;
                 }
@@ -451,6 +461,20 @@ public class BackendStage implements JasminBackend {
                 invocationJasmin.append(")").append(translateType(ollirClass, instruction.getReturnType()))
                         .append("\n");
             }
+        }
+
+        int numArguments = instruction.getListOfOperands().size();
+
+        switch (instruction.getInvocationType()) {
+            case invokespecial:
+            case invokevirtual:
+                updateStackSize(-1 - numArguments);
+                break;
+            case invokestatic:
+                updateStackSize(-numArguments);
+                break;
+            default:
+                break;
         }
 
         lineWithTabs().append(invocationJasmin);
@@ -618,12 +642,8 @@ public class BackendStage implements JasminBackend {
         return "ldc " + constant;
     }
 
-    // Stack Size
     private static void updateStackSize(int increment) {
-        stackSize = stackSize + increment;
-        if (stackSize > maxStackSize) {
-            maxStackSize = stackSize;
-        }
+        stackSize += increment;
+        maxStackSize = Math.max(maxStackSize, stackSize);
     }
-
 }
