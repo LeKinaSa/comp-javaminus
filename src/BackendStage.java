@@ -250,14 +250,26 @@ public class BackendStage implements JasminBackend {
     }
 
     private void buildAssignInstruction(ClassUnit ollirClass, Method method, AssignInstruction instruction) {
-        Instruction rhs = instruction.getRhs();
-        buildInstruction(ollirClass, method, rhs);
-
         Operand destination = (Operand) instruction.getDest();
         Descriptor descriptor = method.getVarTable().get(destination.getName());
 
+        ElementType assignType = instruction.getTypeOfAssign().getTypeOfElement();
+
         if (descriptor != null) {
             ElementType type = descriptor.getVarType().getTypeOfElement();
+
+            if (type == ElementType.ARRAYREF && assignType == ElementType.INT32) {
+                // Assigning to an array element
+                // Push the array reference onto the stack
+                lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+
+                ArrayOperand destinationArray = (ArrayOperand) destination;
+                // Push the index that is being accessed onto the stack
+                loadElement(method, destinationArray.getIndexOperands().get(0));
+            }
+
+            Instruction rhs = instruction.getRhs();
+            buildInstruction(ollirClass, method, rhs);
 
             // Local variable
             switch (type) {
@@ -266,6 +278,13 @@ public class BackendStage implements JasminBackend {
                     lineWithTabs().append(istoreInstruction(descriptor.getVirtualReg())).append("\n");
                     break;
                 case ARRAYREF:
+                    if (assignType == ElementType.ARRAYREF) {
+                        lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    }
+                    else {
+                        lineWithTabs().append("iastore\n");
+                    }
+                    break;
                 case OBJECTREF:
                     lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
                     break;
@@ -506,11 +525,25 @@ public class BackendStage implements JasminBackend {
                 ElementType type = descriptor.getVarType().getTypeOfElement();
 
                 // Local variable
-                if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-                    lineWithTabs().append(iloadInstruction(descriptor.getVirtualReg())).append("\n");
-                }
-                else if (type == ElementType.OBJECTREF || type == ElementType.THIS) {
-                    lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                switch (type) {
+                    case INT32:
+                    case BOOLEAN:
+                        lineWithTabs().append(iloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        break;
+                    case OBJECTREF:
+                    case THIS:
+                        lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        break;
+                    case ARRAYREF: {
+                        ArrayOperand arrayOperand = (ArrayOperand) operand;
+                        lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+
+                        Element index = arrayOperand.getIndexOperands().get(0);
+                        loadElement(method, index);
+
+                        lineWithTabs().append("iaload\n");
+                        break;
+                    }
                 }
             }
         }
