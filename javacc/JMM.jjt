@@ -151,7 +151,7 @@ void MethodBody() #Body : {} {
 }
 
 void MethodReturn() #Return : {} {
-    <RETURN> Expression() <SEMICOLON>
+    <RETURN> ExpressionAssign() <SEMICOLON>
 }
 
 String Type() #void : {Token t;} {
@@ -195,10 +195,6 @@ void skipToStatement() {
     }
 }
 
-void Assignment() : {} {
-    <IDENTIFIER> (<LSQBR> Expression() <RSQBR>)? <ASSIGN> Expression()
-}
-
 void Expression() : {} {
     ExpressionAssign()
 }
@@ -239,7 +235,7 @@ void Primary() #void : { Token t; } {
 }
 
 void PrimaryL() #void : {} {
-    (<LSQBR> Expression() <RSQBR>) #ArrayAccess(2) PrimaryL()
+    (<LSQBR> ExpressionAssign() <RSQBR>) #ArrayAccess(2) PrimaryL()
     | <DOT> ExpressionDot() #Dot(2) PrimaryL()
     | {}
 }
