@@ -45,45 +45,33 @@ public class SucceedTest {
         testSucceed("fixtures/public/Simple.jmm");
     }
 
-    public void testSemantic(String path) {
-        String jmmCode = SpecsIo.getResource(path);
-        JmmParserResult result = TestUtils.parse(jmmCode);
-        TestUtils.noErrors(result.getReports());
-
-        AnalysisStage analysisStage = new AnalysisStage();
-        JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(result);
-
-        System.out.println("Semantic reports: " + semanticsResult.getReports());
-        TestUtils.noErrors(semanticsResult.getReports());
-    }
-
     @Test
     public void testQuickSort() {
-        testSemantic("fixtures/public/QuickSort.jmm");
+        testSucceed("fixtures/public/QuickSort.jmm");
     }
 
     @Test
     public void testLazySort() {
-        testSemantic("fixtures/public/Lazysort.jmm");
+        testSucceed("fixtures/public/Lazysort.jmm");
     }
 
     @Test
     public void testFindMaximum() {
-        testSemantic("fixtures/public/FindMaximum.jmm");
+        testSucceed("fixtures/public/FindMaximum.jmm");
     }
 
     @Test
     public void testLife() {
-        testSemantic("fixtures/public/Life.jmm");
+        testSucceed("fixtures/public/Life.jmm");
     }
 
     @Test
     public void testMonteCarloPi() {
-        testSemantic("fixtures/public/MonteCarloPi.jmm");
+        testSucceed("fixtures/public/MonteCarloPi.jmm");
     }
 
     @Test
     public void testTicTacToe() {
-        testSemantic("fixtures/public/TicTacToe.jmm");
+        testSucceed("fixtures/public/TicTacToe.jmm");
     }
 }
