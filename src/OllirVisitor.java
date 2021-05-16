@@ -623,7 +623,14 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         String indexOllir = visit(indexNode, reports);
 
         // Remove type information from the array variable (to conform with the OLLIR specification)
-        arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf("."));
+        if (arrayOllir.startsWith("$")) {
+            // Parameter (we need to keep the name of the parameter as well as its number)
+            arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf('.', arrayOllir.indexOf('.') + 1));
+        }
+        else {
+            // Local variable (we only need to keep the name)
+            arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf('.'));
+        }
 
         StringBuilder arrayAccessBuilder = new StringBuilder();
         arrayAccessBuilder.append(arrayOllir).append("[").append(indexOllir).append("].i32");
