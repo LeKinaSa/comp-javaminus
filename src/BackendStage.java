@@ -1,9 +1,14 @@
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.specs.comp.ollir.*;
 
+import org.specs.comp.ollir.Node;
 import pt.up.fe.comp.jmm.jasmin.JasminBackend;
 import pt.up.fe.comp.jmm.jasmin.JasminResult;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
@@ -24,8 +29,12 @@ import pt.up.fe.comp.jmm.report.Stage;
  */
 
 public class BackendStage implements JasminBackend {
-    private final StringBuilder jasminBuilder = new StringBuilder(),
-            tabs = new StringBuilder(); // Improves Jasmin code formatting
+    private StringBuilder jasminBuilder = new StringBuilder();
+    private final StringBuilder tabs = new StringBuilder(); // Improves Jasmin code formatting
+    
+    private final Map<Method, Integer> booleanOperationsMap = new HashMap<>();
+    private static int stackSize = 0;
+    private static int maxStackSize = 0;
 
     @Override
     public JasminResult toJasmin(OllirResult ollirResult) {
@@ -148,7 +157,19 @@ public class BackendStage implements JasminBackend {
         jasminBuilder.append("\n");
     }
 
+    private int getLocalsLimit(Method method) {
+        Set<Integer> usedRegisters = new HashSet<>();
+        for (Descriptor var : method.getVarTable().values()) {
+            if (var.getScope() == VarScope.LOCAL || var.getScope() == VarScope.PARAMETER) {
+                usedRegisters.add(var.getVirtualReg());
+            }
+        }
+        return usedRegisters.size();
+    }
+
     private void buildMethod(ClassUnit ollirClass, Method method) {
+        booleanOperationsMap.put(method, 0);
+
         Type returnType = method.getReturnType();
 
         lineWithTabs().append(".method ");
@@ -167,17 +188,29 @@ public class BackendStage implements JasminBackend {
         jasminBuilder.append(translateType(ollirClass, returnType)).append("\n");
         addTab();
 
+        StringBuilder savedJasminBuilder = null;
         if (!method.isConstructMethod()) {
-            // TODO: Temporary limits for checkpoint 2
-            lineWithTabs().append(".limit stack 99\n");
-            lineWithTabs().append(".limit locals 99\n");
+            // Method should be on a different builder
+            savedJasminBuilder = jasminBuilder;
+            jasminBuilder = new StringBuilder();
+            stackSize = 0;
+            maxStackSize = 0;
         }
 
         buildMethodBody(ollirClass, method);
 
-        if (returnType.getTypeOfElement() == ElementType.VOID) {
-            // Add explicit return for void functions
-            lineWithTabs().append("return").append("\n");
+        if (!method.isConstructMethod()) {
+            // Method stored in an auxiliary builder
+            StringBuilder methodJasminBuilder = jasminBuilder;
+            jasminBuilder = savedJasminBuilder;
+            lineWithTabs().append(".limit stack ").append(maxStackSize).append("\n");
+
+            int numLocals = getLocalsLimit(method);
+            // "this" is not explicitly present in the var table unless the function uses the keyword
+            if (!method.isStaticMethod() && !method.getVarTable().containsKey("this")) numLocals += 1;
+
+            lineWithTabs().append(".limit locals ").append(numLocals).append("\n");
+            jasminBuilder.append(methodJasminBuilder);
         }
 
         removeTab();
@@ -197,6 +230,10 @@ public class BackendStage implements JasminBackend {
     }
 
     private void buildInstruction(ClassUnit ollirClass, Method method, Instruction instruction) {
+        for (String label : method.getLabels(instruction)) {
+            jasminBuilder.append(label).append(":\n");
+        }
+
         switch (instruction.getInstType()) {
             case ASSIGN:
                 buildAssignInstruction(ollirClass, method, (AssignInstruction) instruction);
@@ -204,11 +241,17 @@ public class BackendStage implements JasminBackend {
             case BINARYOPER:
                 buildBinaryOpInstruction(method, (BinaryOpInstruction) instruction);
                 break;
+            case BRANCH:
+                buildBranchInstruction(method, (CondBranchInstruction) instruction);
+                break;
             case CALL:
                 buildCallInstruction(ollirClass, method, (CallInstruction) instruction);
                 break;
             case NOPER:
                 buildNoperInstruction(method, (SingleOpInstruction) instruction);
+                break;
+            case GOTO:
+                buildGotoInstruction((GotoInstruction) instruction);
                 break;
             case RETURN:
                 buildReturnInstruction(method, (ReturnInstruction) instruction);
@@ -219,27 +262,56 @@ public class BackendStage implements JasminBackend {
             case PUTFIELD:
                 buildPutFieldInstruction(ollirClass, method, (PutFieldInstruction) instruction);
                 break;
+            case UNARYOPER:
+                buildUnaryOpInstruction(method, (UnaryOpInstruction) instruction);
+                break;
             default:
                 break;
         }
     }
 
     private void buildAssignInstruction(ClassUnit ollirClass, Method method, AssignInstruction instruction) {
-        Instruction rhs = instruction.getRhs();
-        buildInstruction(ollirClass, method, rhs);
-
         Operand destination = (Operand) instruction.getDest();
         Descriptor descriptor = method.getVarTable().get(destination.getName());
+
+        ElementType assignType = instruction.getTypeOfAssign().getTypeOfElement();
 
         if (descriptor != null) {
             ElementType type = descriptor.getVarType().getTypeOfElement();
 
-            // Local variable
-            if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-                lineWithTabs().append(istoreInstruction(descriptor.getVirtualReg())).append("\n");
+            if (type == ElementType.ARRAYREF && assignType == ElementType.INT32) {
+                // Assigning to an array element
+                // Push the array reference onto the stack
+                lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+
+                ArrayOperand destinationArray = (ArrayOperand) destination;
+                // Push the index that is being accessed onto the stack
+                loadElement(method, destinationArray.getIndexOperands().get(0));
             }
-            else if (type == ElementType.OBJECTREF) {
-                lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+
+            Instruction rhs = instruction.getRhs();
+            buildInstruction(ollirClass, method, rhs);
+
+            // Local variable
+            switch (type) {
+                case BOOLEAN:
+                case INT32:
+                    lineWithTabs().append(istoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    break;
+                case ARRAYREF:
+                    if (assignType == ElementType.ARRAYREF) {
+                        lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    }
+                    else {
+                        lineWithTabs().append("iastore\n");
+                        updateStackSize(-3);
+                    }
+                    break;
+                case OBJECTREF:
+                    lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
+                    break;
+                default:
+                    break;
             }
         }
     }
@@ -255,16 +327,63 @@ public class BackendStage implements JasminBackend {
         switch (operation.getOpType()) {
             case ADD:
                 lineWithTabs().append("iadd\n");
+                updateStackSize(-1);
                 break;
             case SUB:
                 lineWithTabs().append("isub\n");
+                updateStackSize(-1);
                 break;
             case MUL:
                 lineWithTabs().append("imul\n");
+                updateStackSize(-1);
                 break;
             case DIV:
                 lineWithTabs().append("idiv\n");
-                break;                
+                updateStackSize(-1);
+                break;
+            case LTH: {
+                Integer boolOpCount = booleanOperationsMap.computeIfPresent(method, (key, count) -> count + 1);
+
+                lineWithTabs().append("if_icmplt bop").append(boolOpCount).append("\n");
+                updateStackSize(-2);
+                lineWithTabs().append(iconstInstruction(0)).append("\n");
+                lineWithTabs().append("goto endbop").append(boolOpCount).append("\n");
+                jasminBuilder.append("bop").append(boolOpCount).append(":\n");
+                lineWithTabs().append(iconstInstruction(1)).append("\n");
+                jasminBuilder.append("endbop").append(boolOpCount).append(":\n");
+
+                break;
+            }
+            case ANDB:
+                lineWithTabs().append("iand\n");
+                updateStackSize(-1);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void buildBranchInstruction(Method method, CondBranchInstruction instruction) {
+        Element leftOperand = instruction.getLeftOperand(),
+                rightOperand = instruction.getRightOperand();
+
+        Operation operation = instruction.getCondOperation();
+
+        switch (operation.getOpType()) {
+            case LTH:    // i32 < i32
+                loadElement(method, leftOperand);
+                loadElement(method, rightOperand);
+                lineWithTabs().append("if_icmplt ").append(instruction.getLabel()).append("\n");
+                updateStackSize(-2);
+                break;
+            case ANDB:      // bool && bool
+                loadElement(method, leftOperand);
+                loadElement(method, rightOperand);
+                lineWithTabs().append("iand\n");
+                updateStackSize(-1);
+                lineWithTabs().append("ifne ").append(instruction.getLabel()).append("\n");
+                updateStackSize(-1);
+                break;
             default:
                 break;
         }
@@ -279,8 +398,27 @@ public class BackendStage implements JasminBackend {
         StringBuilder invocationJasmin = new StringBuilder();
 
         if (instruction.getInvocationType() == CallType.NEW) {
-            ClassType classType = (ClassType) firstArg.getType();
-            lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
+            switch (firstArg.getType().getTypeOfElement()) {
+                case OBJECTREF:
+                case CLASS: {
+                    ClassType classType = (ClassType) firstArg.getType();
+                    updateStackSize(1);
+                    lineWithTabs().append("new ").append(getQualifiedClassName(ollirClass, classType.getName())).append("\n");
+                    return;
+                }
+                case ARRAYREF: {
+                    Element sizeOperand = instruction.getListOfOperands().get(0);
+                    loadElement(method, sizeOperand);
+                    lineWithTabs().append("newarray int\n"); // New arrays in J-- can only be one-dimensional int arrays
+                    return;
+                }
+                default:
+                    break;
+            }
+        }
+        else if (instruction.getInvocationType() == CallType.arraylength) {
+            loadElement(method, firstArg);
+            lineWithTabs().append("arraylength\n");
             return;
         }
         else {
@@ -336,22 +474,58 @@ public class BackendStage implements JasminBackend {
             }
         }
 
+        int numArguments = instruction.getListOfOperands().size();
+
+        switch (instruction.getInvocationType()) {
+            case invokespecial:
+            case invokevirtual:
+                updateStackSize(-1 - numArguments);
+                break;
+            case invokestatic:
+                updateStackSize(-numArguments);
+                break;
+            default:
+                break;
+        }
+
         lineWithTabs().append(invocationJasmin);
+
+        // If function call returns a value, increment stack size
+        if (instruction.getReturnType().getTypeOfElement() != ElementType.VOID) {
+            updateStackSize(1);
+
+            if (!instruction.getPred().isEmpty()) {
+                // Value of the instruction isn't being used, pop return value from the stack
+                lineWithTabs().append("pop\n");
+                updateStackSize(-1);
+            }
+        }
     }
 
     private void buildNoperInstruction(Method method, SingleOpInstruction instruction) {
         loadElement(method, instruction.getSingleOperand());
     }
 
-    private void buildReturnInstruction(Method method, ReturnInstruction instruction) {
-        loadElement(method, instruction.getOperand());
+    private void buildGotoInstruction(GotoInstruction instruction) {
+        lineWithTabs().append("goto ").append(instruction.getLabel()).append("\n");
+    }
 
-        ElementType type = instruction.getOperand().getType().getTypeOfElement();
-        if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-            lineWithTabs().append("ireturn\n");
+    private void buildReturnInstruction(Method method, ReturnInstruction instruction) {
+        Element operand = instruction.getOperand();
+
+        if (operand != null) {
+            loadElement(method, operand);
+
+            ElementType type = operand.getType().getTypeOfElement();
+            if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
+                lineWithTabs().append("ireturn\n");
+            }
+            else if (type == ElementType.OBJECTREF) {
+                lineWithTabs().append("areturn\n");
+            }
         }
-        else if (type == ElementType.OBJECTREF) {
-            lineWithTabs().append("areturn\n");
+        else {
+            lineWithTabs().append("return\n");
         }
     }
 
@@ -377,6 +551,30 @@ public class BackendStage implements JasminBackend {
                 .append(" ").append(translateType(ollirClass, field.getType())).append("\n");
     }
 
+    private void buildUnaryOpInstruction(Method method, UnaryOpInstruction instruction) {
+        Element rightElement = instruction.getRightOperand();
+        Operation operation = instruction.getUnaryOperation();
+
+        loadElement(method, rightElement);
+
+        switch (operation.getOpType()) {
+            case NOTB: {
+                Integer boolOpCount = booleanOperationsMap.computeIfPresent(method, (key, count) -> count + 1);
+
+                lineWithTabs().append("ifne bop").append(boolOpCount).append("\n");
+                lineWithTabs().append(iconstInstruction(1)).append("\n");
+                lineWithTabs().append("goto endbop").append(boolOpCount).append("\n");
+                jasminBuilder.append("bop").append(boolOpCount).append(":\n");
+                lineWithTabs().append(iconstInstruction(0)).append("\n");
+                jasminBuilder.append("endbop").append(boolOpCount).append(":\n");
+
+                break;
+            }
+            default:
+                break;
+        }
+    }
+
     private void loadElement(Method method, Element element) {
         if (element.isLiteral()) {
             LiteralElement literal = (LiteralElement) element;
@@ -390,11 +588,35 @@ public class BackendStage implements JasminBackend {
                 ElementType type = descriptor.getVarType().getTypeOfElement();
 
                 // Local variable
-                if (type == ElementType.INT32 || type == ElementType.BOOLEAN) {
-                    lineWithTabs().append(iloadInstruction(descriptor.getVirtualReg())).append("\n");
-                }
-                else if (type == ElementType.OBJECTREF || type == ElementType.THIS) {
-                    lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                switch (type) {
+                    case INT32:
+                    case BOOLEAN:
+                        lineWithTabs().append(iloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        break;
+                    case OBJECTREF:
+                    case THIS:
+                        lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        break;
+                    case ARRAYREF: {
+                        try {
+                            // Indexing the array
+                            ArrayOperand arrayOperand = (ArrayOperand) operand;
+
+                            lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+
+                            Element index = arrayOperand.getIndexOperands().get(0);
+                            loadElement(method, index);
+
+                            lineWithTabs().append("iaload\n");
+                            updateStackSize(-1);
+                        }
+                        catch (ClassCastException ex) {
+                            // Getting the array reference
+                            lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        }
+
+                        break;
+                    }
                 }
             }
         }
@@ -402,6 +624,7 @@ public class BackendStage implements JasminBackend {
 
     // Instructions
     private String aloadInstruction(int index) {
+        updateStackSize(1);
         if (index <= 3) {
             return "aload_" + index;
         }
@@ -409,6 +632,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String astoreInstruction(int index) {
+        updateStackSize(-1);
         if (index <= 3) {
             return "astore_" + index;
         }
@@ -416,6 +640,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String iloadInstruction(int index) {
+        updateStackSize(1);
         if (index <= 3) {
             return "iload_" + index;
         }
@@ -423,6 +648,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String istoreInstruction(int index) {
+        updateStackSize(-1);
         if (index <= 3) {
             return "istore_" + index;
         }
@@ -430,6 +656,7 @@ public class BackendStage implements JasminBackend {
     }
 
     private String iconstInstruction(int constant) {
+        updateStackSize(1);
         if (constant == -1) return "iconst_m1";
         if (constant >= 0 && constant <= 5) {
             return "iconst_" + constant;
@@ -444,5 +671,10 @@ public class BackendStage implements JasminBackend {
         }
 
         return "ldc " + constant;
+    }
+
+    private static void updateStackSize(int increment) {
+        stackSize += increment;
+        maxStackSize = Math.max(maxStackSize, stackSize);
     }
 }
