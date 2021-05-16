@@ -8,6 +8,7 @@ import java.util.HashSet;
 
 import org.specs.comp.ollir.*;
 
+import org.specs.comp.ollir.Node;
 import pt.up.fe.comp.jmm.jasmin.JasminBackend;
 import pt.up.fe.comp.jmm.jasmin.JasminResult;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
@@ -302,8 +303,8 @@ public class BackendStage implements JasminBackend {
                         lineWithTabs().append(astoreInstruction(descriptor.getVirtualReg())).append("\n");
                     }
                     else {
-                        updateStackSize(-3);
                         lineWithTabs().append("iastore\n");
+                        updateStackSize(-3);
                     }
                     break;
                 case OBJECTREF:
@@ -325,25 +326,26 @@ public class BackendStage implements JasminBackend {
 
         switch (operation.getOpType()) {
             case ADD:
-                updateStackSize(-1);
                 lineWithTabs().append("iadd\n");
+                updateStackSize(-1);
                 break;
             case SUB:
-                updateStackSize(-1);
                 lineWithTabs().append("isub\n");
+                updateStackSize(-1);
                 break;
             case MUL:
-                updateStackSize(-1);
                 lineWithTabs().append("imul\n");
+                updateStackSize(-1);
                 break;
             case DIV:
-                updateStackSize(-1);
                 lineWithTabs().append("idiv\n");
+                updateStackSize(-1);
                 break;
             case LTH: {
                 Integer boolOpCount = booleanOperationsMap.computeIfPresent(method, (key, count) -> count + 1);
 
                 lineWithTabs().append("if_icmplt bop").append(boolOpCount).append("\n");
+                updateStackSize(-2);
                 lineWithTabs().append(iconstInstruction(0)).append("\n");
                 lineWithTabs().append("goto endbop").append(boolOpCount).append("\n");
                 jasminBuilder.append("bop").append(boolOpCount).append(":\n");
@@ -353,8 +355,8 @@ public class BackendStage implements JasminBackend {
                 break;
             }
             case ANDB:
-                updateStackSize(-1);
                 lineWithTabs().append("iand\n");
+                updateStackSize(-1);
                 break;
             default:
                 break;
@@ -372,13 +374,15 @@ public class BackendStage implements JasminBackend {
                 loadElement(method, leftOperand);
                 loadElement(method, rightOperand);
                 lineWithTabs().append("if_icmplt ").append(instruction.getLabel()).append("\n");
+                updateStackSize(-2);
                 break;
             case ANDB:      // bool && bool
                 loadElement(method, leftOperand);
                 loadElement(method, rightOperand);
-                updateStackSize(-1);
                 lineWithTabs().append("iand\n");
+                updateStackSize(-1);
                 lineWithTabs().append("ifne ").append(instruction.getLabel()).append("\n");
+                updateStackSize(-1);
                 break;
             default:
                 break;
@@ -485,6 +489,17 @@ public class BackendStage implements JasminBackend {
         }
 
         lineWithTabs().append(invocationJasmin);
+
+        // If function call returns a value, increment stack size
+        if (instruction.getReturnType().getTypeOfElement() != ElementType.VOID) {
+            updateStackSize(1);
+
+            if (!instruction.getPred().isEmpty()) {
+                // Value of the instruction isn't being used, pop return value from the stack
+                lineWithTabs().append("pop\n");
+                updateStackSize(-1);
+            }
+        }
     }
 
     private void buildNoperInstruction(Method method, SingleOpInstruction instruction) {
@@ -592,8 +607,8 @@ public class BackendStage implements JasminBackend {
                             Element index = arrayOperand.getIndexOperands().get(0);
                             loadElement(method, index);
 
-                            updateStackSize(-1);
                             lineWithTabs().append("iaload\n");
+                            updateStackSize(-1);
                         }
                         catch (ClassCastException ex) {
                             // Getting the array reference
