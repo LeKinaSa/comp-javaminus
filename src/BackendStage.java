@@ -412,6 +412,11 @@ public class BackendStage implements JasminBackend {
                     break;
             }
         }
+        else if (instruction.getInvocationType() == CallType.arraylength) {
+            loadElement(method, firstArg);
+            lineWithTabs().append("arraylength\n");
+            return;
+        }
         else {
             if (instruction.getInvocationType() != CallType.invokestatic) {
                 loadElement(method, firstArg);
