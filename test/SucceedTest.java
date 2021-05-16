@@ -74,4 +74,9 @@ public class SucceedTest {
     public void testTicTacToe() {
         testSucceed("fixtures/public/TicTacToe.jmm");
     }
+
+    @Test
+    public void testWhileAndIf() {
+        testSucceed("fixtures/public/WhileAndIF.jmm");
+    }
 }
