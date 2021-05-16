@@ -159,7 +159,9 @@ public class BackendStage implements JasminBackend {
     private int getLocalsLimit(Method method) {
         Set<Integer> usedRegisters = new HashSet<>();
         for (Descriptor var : method.getVarTable().values()) {
-            usedRegisters.add(var.getVirtualReg());
+            if (var.getScope() == VarScope.LOCAL || var.getScope() == VarScope.PARAMETER) {
+                usedRegisters.add(var.getVirtualReg());
+            }
         }
         return usedRegisters.size();
     }
@@ -576,14 +578,23 @@ public class BackendStage implements JasminBackend {
                         lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
                         break;
                     case ARRAYREF: {
-                        ArrayOperand arrayOperand = (ArrayOperand) operand;
-                        lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        try {
+                            // Indexing the array
+                            ArrayOperand arrayOperand = (ArrayOperand) operand;
 
-                        Element index = arrayOperand.getIndexOperands().get(0);
-                        loadElement(method, index);
+                            lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
 
-                        updateStackSize(-1);
-                        lineWithTabs().append("iaload\n");
+                            Element index = arrayOperand.getIndexOperands().get(0);
+                            loadElement(method, index);
+
+                            updateStackSize(-1);
+                            lineWithTabs().append("iaload\n");
+                        }
+                        catch (ClassCastException ex) {
+                            // Getting the array reference
+                            lineWithTabs().append(aloadInstruction(descriptor.getVirtualReg())).append("\n");
+                        }
+
                         break;
                     }
                 }
