@@ -75,6 +75,18 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         }
     }
 
+    private void incrementTempVariable(String signature) {
+        if (!tempVariablesMap.containsKey(signature)) return;
+
+        String name;
+        do {
+            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            name = "t" + tempVariablesMap.get(signature);
+        } while (symbolTable.getSymbol(signature, name) != null);
+
+        // There is no local variable or field with the same name as the temp variable
+    }
+
     private StringBuilder lineWithTabs() {
         return ollirBuilder.append(tabs);
     }
@@ -290,7 +302,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return arithmeticBuilder.toString();
         }
 
-        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        incrementTempVariable(signature);
         String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
 
         lineWithTabs().append(tempVar).append(" :=.i32 ").append(arithmeticBuilder).append(";\n");
@@ -326,7 +338,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return booleanBuilder.toString();
         }
 
-        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        incrementTempVariable(signature);
         String tempVar = "t" + tempVariablesMap.get(signature) + ".bool";
 
         lineWithTabs().append(tempVar).append(" :=.bool ").append(booleanBuilder).append(";\n");
@@ -381,7 +393,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 return fieldBuilder.toString();
             }
 
-            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            incrementTempVariable(signature);
             String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
 
             lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(fieldBuilder).append(";\n");
@@ -411,7 +423,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
                 if (expressionOllir.startsWith("getfield") || expressionOllir.startsWith("new")) {
                     // Cannot use getfield or new within putfield, therefore we must use a temporary variable
-                    tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+                    incrementTempVariable(signature);
                     String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
 
                     lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(expressionOllir).append(";\n");
@@ -534,7 +546,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 return dotBuilder.toString();
             }
 
-            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            incrementTempVariable(signature);
             String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
 
             lineWithTabs().append(tempVar).append(" :=.").append(convertedType).append(" ").append(dotBuilder).append(";\n");
@@ -549,7 +561,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                 return dotBuilder.toString();
             }
 
-            tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+            incrementTempVariable(signature);
             String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
 
             lineWithTabs().append(tempVar).append(" :=.i32 ").append(dotBuilder.toString()).append(";\n");
@@ -570,7 +582,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return newInstanceBuilder.toString();
         }
 
-        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        incrementTempVariable(signature);
         String tempVar = "t" + tempVariablesMap.get(signature) + "." + className;
 
         lineWithTabs().append(tempVar).append(" :=.").append(className).append(" ")
@@ -595,7 +607,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return newArrayBuilder.toString();
         }
 
-        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        incrementTempVariable(signature);
         String tempVar = "t" + tempVariablesMap.get(signature) + ".array.i32";
 
         lineWithTabs().append(tempVar).append(" :=.array.i32 ").append(newArrayBuilder).append(";\n");
@@ -639,7 +651,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             return arrayAccessBuilder.toString();
         }
 
-        tempVariablesMap.computeIfPresent(signature, (key, count) -> count + 1);
+        incrementTempVariable(signature);
         String tempVar = "t" + tempVariablesMap.get(signature) + ".i32";
 
         lineWithTabs().append(tempVar).append(" :=.i32 ").append(arrayAccessBuilder).append(";\n");
