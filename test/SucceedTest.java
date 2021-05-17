@@ -79,4 +79,9 @@ public class SucceedTest {
     public void testWhileAndIf() {
         testSucceed("fixtures/public/WhileAndIF.jmm");
     }
+
+    @Test
+    public void testMaxOverloading() {
+        testSucceed("fixtures/public/MaxOverloading.jmm");
+    }
 }

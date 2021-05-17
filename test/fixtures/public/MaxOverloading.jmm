@@ -1,0 +1,89 @@
+import io;
+
+class MaxOverloading {
+    public static void main(String[] args) {
+        int a;
+        int b;
+        int c;
+        int res;
+        int[] arr;
+        MaxOverloading o;
+
+        o = new MaxOverloading();
+        arr = new int[5];
+        o.initArr(arr);
+
+        a = 13;
+        b = 8;
+        c = 20;
+
+        res = o.max(a, b);
+        io.println(res);
+
+        res = o.max(a, b, c);
+        io.println(res);
+
+        res = o.max(arr);
+        io.println(res);
+    }
+
+    public boolean initArr(int[] arr) {
+        arr[0] = 2;
+        arr[1] = 47;
+        arr[2] = 30;
+        arr[3] = 21;
+        arr[4] = 19;
+
+        return true;
+    }
+
+    public int max(int[] arr) {
+        int i;
+        int max;
+
+        i = 0;
+        max = arr[i];
+
+        while (i < arr.length) {
+            if (max < arr[i]) {
+                max = arr[i];
+            }
+            else {}
+
+            i = i + 1;
+        }
+
+        return max;
+    }
+
+    public int max(int a, int b) {
+        int max;
+        max = a;
+
+        if (a < b) {
+            max = b;
+        }
+        else {}
+
+        return max;
+    }
+
+    public int max(int a, int b, int c) {
+        int max;
+        max = a;
+
+        if (a < b) {
+            max = b;
+            if (b < c) {
+                max = c;
+            }
+            else {}
+        }
+        else if (a < c) {
+            max = c;
+        }
+        else {}
+
+        return max;
+    }
+}
