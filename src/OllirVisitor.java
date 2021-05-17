@@ -18,8 +18,9 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             ifStatementsMap = new HashMap<>(),   // Number of if statements in a method
             whileStatementMap = new HashMap<>(); // Number of while statements in a method
 
-    private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/", "LessThan", "<");
-    private static final Map<String, String> booleanOpMap = Map.of("LessThan", "<", "And", "&&", "Not", "!");
+    private static final Map<String, String> arithmeticOpMap = Map.of("Add", "+", "Sub", "-", "Mul", "*", "Div", "/"),
+            comparisonOpMap = Map.of("LessThan", "<"),
+            booleanOpMap = Map.of("And", "&&", "Not", "!");
 
     private final Set<String> importedClasses;
 
@@ -44,7 +45,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         addVisit("Mul", this::visitArithmeticOp);
         addVisit("Div", this::visitArithmeticOp);
 
-        addVisit("LessThan", this::visitArithmeticOp);
+        addVisit("LessThan", this::visitComparison);
         addVisit("And", this::visitBooleanOp);
         addVisit("Not", this::visitBooleanOp);
 
@@ -237,9 +238,15 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         JmmNode expressionNode = node.getChildren().get(0), thenNode = node.getChildren().get(1),
                 elseNode = node.getChildren().get(2);
-        
+
         String expressionOllir = visit(expressionNode, reports);
-        lineWithTabs().append("if (").append(expressionOllir).append(") goto then").append(ifCount).append(";\n");
+
+        lineWithTabs().append("if (").append(expressionOllir);
+        if (expressionOllir.split(" ").length == 1) {
+            // FIXME: Temporary fix since OLLIR parser only accepts binary operations in if and while statements
+            ollirBuilder.append(" &&.bool 1.bool");
+        }
+        ollirBuilder.append(") goto then").append(ifCount).append(";\n");
 
         addTab();
         visit(elseNode, reports);
@@ -263,13 +270,18 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         whileStatementMap.computeIfPresent(signature, (key, count) -> count + 1);
         int whileCount = whileStatementMap.get(signature);
 
+        lineWithTabs().append("loop").append(whileCount).append(":\n");
+
         JmmNode expressionNode = node.getChildren().get(0), bodyNode = node.getChildren().get(1);
         String expressionOllir = visit(expressionNode, reports);
-
-        lineWithTabs().append("loop").append(whileCount).append(":\n");
         
         addTab();
-        lineWithTabs().append("if (").append(expressionOllir).append(") goto body").append(whileCount).append(";\n");
+        lineWithTabs().append("if (").append(expressionOllir);
+        if (expressionOllir.split(" ").length == 1) {
+            // FIXME: Temporary fix since OLLIR parser only accepts binary operations in if and while statements
+            ollirBuilder.append(" &&.bool 1.bool");
+        }
+        ollirBuilder.append(") goto body").append(whileCount).append(";\n");
         lineWithTabs().append("goto endloop").append(whileCount).append(";\n");
         removeTab();
 
@@ -291,13 +303,13 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         JmmNode leftChild = node.getChildren().get(0), rightChild = node.getChildren().get(1);
         StringBuilder arithmeticBuilder = new StringBuilder();
 
-        arithmeticBuilder.append(visit(leftChild));
+        arithmeticBuilder.append(visit(leftChild, reports));
         arithmeticBuilder.append(" ").append(arithmeticOpMap.get(node.getKind())).append(".i32 ");
-        arithmeticBuilder.append(visit(rightChild));
+        arithmeticBuilder.append(visit(rightChild, reports));
 
         JmmNode parentNode = node.getParent();
         // Node kinds that can deal with a binary operation
-        Set<String> acceptedParents = Set.of("Expression", "Assign");
+        Set<String> acceptedParents = Set.of("Expression", "Assign", "If", "While");
         if (acceptedParents.contains(parentNode.getKind())) {
             return arithmeticBuilder.toString();
         }
@@ -310,30 +322,57 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         return tempVar;
     }
 
+    public String visitComparison(JmmNode node, List<Report> reports) {
+        String signature = Utils.generateMethodSignatureFromChildNode(node);
+
+        JmmNode leftChild = node.getChildren().get(0), rightChild = node.getChildren().get(1);
+        StringBuilder comparisonBuilder = new StringBuilder();
+
+        comparisonBuilder.append(visit(leftChild, reports));
+        comparisonBuilder.append(" ").append(comparisonOpMap.get(node.getKind())).append(".i32 ");
+        comparisonBuilder.append(visit(rightChild, reports));
+
+        JmmNode parentNode = node.getParent();
+        // Node kinds that can deal with a binary operation
+        Set<String> acceptedParents = Set.of("Expression", "Assign", "If", "While");
+        if (acceptedParents.contains(parentNode.getKind())) {
+            return comparisonBuilder.toString();
+        }
+
+        incrementTempVariable(signature);
+        String tempVar = "t" + tempVariablesMap.get(signature) + ".bool";
+
+        lineWithTabs().append(tempVar).append(" :=.bool ").append(comparisonBuilder).append(";\n");
+
+        return tempVar;
+    }
+
     public String visitBooleanOp(JmmNode node, List<Report> reports) {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
 
-        JmmNode leftChild, rightChild;
-        if (node.getChildren().size() > 1) { // LessThan And
-            leftChild = node.getChildren().get(0);
+        JmmNode leftChild = node.getChildren().get(0), rightChild = null;
+        if (node.getChildren().size() > 1) { // And
             rightChild = node.getChildren().get(1);
-        }
-        else { // Not
-            leftChild = null;
-            rightChild = node.getChildren().get(0);
         }
 
         StringBuilder booleanBuilder = new StringBuilder();
 
-        if (leftChild != null){
-            booleanBuilder.append(visit(leftChild));
+        String leftOllir = visit(leftChild, reports), rightOllir;
+
+        if (rightChild != null) { // And
+            rightOllir = visit(rightChild, reports);
         }
+        else { // Not
+            rightOllir = leftOllir;
+        }
+
+        booleanBuilder.append(leftOllir);
         booleanBuilder.append(" ").append(booleanOpMap.get(node.getKind())).append(".bool ");
-        booleanBuilder.append(visit(rightChild));
+        booleanBuilder.append(rightOllir);
 
         JmmNode parentNode = node.getParent();
         // Node kinds that can deal with a binary operation
-        Set<String> acceptedParents = Set.of("Expression", "Assign");
+        Set<String> acceptedParents = Set.of("Expression", "Assign", "If", "While");
         if (acceptedParents.contains(parentNode.getKind())) {
             return booleanBuilder.toString();
         }
@@ -358,13 +397,16 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         String signature = Utils.generateMethodSignatureFromChildNode(node);
         String name = node.get("name");
 
+        String escapedName = Utils.escapeName(name);
+
         // Access local variable
         List<Symbol> localVariables = symbolTable.getLocalVariables(signature);
         Optional<Symbol> optional = localVariables.stream().filter(s -> s.getName().equals(name)).findFirst();
 
         if (optional.isPresent()) {
             Symbol symbol = optional.get();
-            return symbol.getName() + "." + convertType(symbol.getType());
+
+            return escapedName + "." + convertType(symbol.getType());
         }
 
         // Access function parameter
@@ -373,7 +415,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         for (int i = 0; i < parameters.size(); ++i) {
             Symbol symbol = parameters.get(i);
             if (symbol.getName().equals(name)) {
-                return "$" + (i + 1) + "." + symbol.getName() + "." + convertType(symbol.getType());
+                return "$" + (i + 1) + "." + escapedName + "." + convertType(symbol.getType());
             }
         }
 
@@ -386,7 +428,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
             String convertedType = convertType(symbol.getType());
             StringBuilder fieldBuilder = new StringBuilder();
 
-            fieldBuilder.append("getfield(this, ").append(symbol.getName()).append(".").append(convertedType).append(").").append(convertedType);
+            fieldBuilder.append("getfield(this, ").append(escapedName).append(".").append(convertedType).append(").").append(convertedType);
 
             JmmNode parentNode = node.getParent();
             if (parentNode.getKind().equals("Assign")) {
@@ -417,11 +459,18 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
             String finalVariable;
 
-            if (symbolTable.fields.contains(symbol)) {
+            MethodSymbolTable methodSymbolTable = symbolTable.methodSymbolTableMap.get(signature);
+
+            if (!methodSymbolTable.parameters.contains(symbol) && !methodSymbolTable.localVariables.contains(symbol)
+                    && symbolTable.fields.contains(symbol)) {
                 // We are assigning to a field, therefore we must use putfield
                 String expressionOllir = visit(expression, reports);
 
-                if (expressionOllir.startsWith("getfield") || expressionOllir.startsWith("new")) {
+                // Expression node kinds that do not require a temporary variable within a putfield
+                Set<String> kinds = Set.of("Var", "Int", "True", "False", "This");
+
+                if (expressionOllir.startsWith("getfield")
+                        || !kinds.contains(expression.getKind())) {
                     // Cannot use getfield or new within putfield, therefore we must use a temporary variable
                     incrementTempVariable(signature);
                     String tempVar = "t" + tempVariablesMap.get(signature) + "." + convertedType;
@@ -430,7 +479,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
                     expressionOllir = tempVar;
                 }
 
-                finalVariable = variable.get("name") + "." + convertedType;
+                finalVariable = Utils.escapeName(variable.get("name")) + "." + convertedType;
                 assignmentBuilder.append("putfield(this, ").append(finalVariable).append(", ").append(expressionOllir).append(").V");
             }
             else {
@@ -488,6 +537,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
 
         if (rightChild.getKind().equals("Func")) {
             Type returnType = Utils.getExpressionType(symbolTable, node, signature);
+
 
             if (returnType == null) {
                 /* This should be caught during the semantic analysis, therefore in theory this code should never
@@ -642,6 +692,15 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         else {
             // Local variable (we only need to keep the name)
             arrayOllir = arrayOllir.substring(0, arrayOllir.indexOf('.'));
+        }
+
+        if (indexNode.getKind().equals("Int")) {
+            // FIXME: Temporary fix since OLLIR parser does not support integer literals as array indices
+            incrementTempVariable(signature);
+            String tempVarIndex = "t" + tempVariablesMap.get(signature) + ".i32";
+
+            lineWithTabs().append(tempVarIndex).append(" :=.i32 ").append(indexOllir).append(";\n");
+            indexOllir = tempVarIndex;
         }
 
         StringBuilder arrayAccessBuilder = new StringBuilder();

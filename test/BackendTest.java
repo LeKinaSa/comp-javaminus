@@ -19,13 +19,15 @@ import org.junit.Test;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.specs.util.SpecsIo;
 
+import java.io.File;
+
 public class BackendTest {
     @Test
     public void testHelloWorld() {
         var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/HelloWorld.jmm"));
         TestUtils.noErrors(result.getReports());
 
-        var output = result.run();
+        String output = result.run();
         assertEquals("Hello, World!", output.trim());
     }
 
@@ -34,7 +36,7 @@ public class BackendTest {
         var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/Simple.jmm"));
         TestUtils.noErrors(result.getReports());
 
-        var output = result.run();
+        String output = result.run();
         assertEquals("30", output.trim());
     }
 
@@ -43,9 +45,17 @@ public class BackendTest {
         var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/QuickSort.jmm"));
         TestUtils.noErrors(result.getReports());
 
-        var output = result.run();
+        String output = result.run();
         assertEquals("1\n2\n3\n4\n5\n6\n7\n8\n9\n10".replaceAll("\\n|\\r\\n",
                 System.getProperty("line.separator")), output.trim());
+    }
+
+    @Test
+    public void testLazysort() {
+        var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/Lazysort.jmm"));
+        TestUtils.noErrors(result.getReports());
+
+        result.compile(new File("compiled"));
     }
 
     @Test
@@ -53,8 +63,41 @@ public class BackendTest {
         var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/WhileAndIF.jmm"));
         TestUtils.noErrors(result.getReports());
 
-        var output = result.run();
+        String output = result.run();
         assertEquals("10\n10\n10\n10\n10\n10\n10\n10\n10\n10".replaceAll("\\n|\\r\\n",
                 System.getProperty("line.separator")), output.trim());
+    }
+
+    @Test
+    public void testFindMaximum() {
+        var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/FindMaximum.jmm"));
+        TestUtils.noErrors(result.getReports());
+
+        String output = result.run();
+        assertEquals("Result: 28", output.trim());
+    }
+
+    @Test
+    public void testMonteCarloPi() {
+        var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/MonteCarloPi.jmm"));
+        TestUtils.noErrors(result.getReports());
+
+        result.compile(new File("compiled"));
+    }
+
+    @Test
+    public void testLife() {
+        var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/Life.jmm"));
+        TestUtils.noErrors(result.getReports());
+
+        result.compile(new File("compiled"));
+    }
+
+    @Test
+    public void testTicTacToe() {
+        var result = TestUtils.backend(SpecsIo.getResource("fixtures/public/TicTacToe.jmm"));
+        TestUtils.noErrors(result.getReports());
+
+        result.compile(new File("compiled"));
     }
 }

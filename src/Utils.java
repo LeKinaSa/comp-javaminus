@@ -155,7 +155,9 @@ public class Utils {
                 else if (rightChild.getKind().equals("Func")) {
                     Type thisClassType = new Type(symbolTable.getClassName(), false);
 
-                    if (symbolTable.getSuper() == null && thisClassType.equals(getExpressionType(symbolTable, leftChild, methodSignature))) {
+                    String calledMethodSignature = getNodeFunctionSignature(symbolTable, methodSignature, rightChild);
+                    if (calledMethodSignature != null && symbolTable.methodSymbolTableMap.containsKey(calledMethodSignature)
+                        && thisClassType.equals(getExpressionType(symbolTable, leftChild, methodSignature))) {
                         // Calling a method from this class on an instance of this class (lookup the return type of the method in the symbol table)
                         return getExpressionType(symbolTable, rightChild, methodSignature);
                     }
@@ -197,5 +199,11 @@ public class Utils {
         }
 
         return null;
+    }
+
+    public static String escapeName(String name) {
+        return name.replaceAll("ret", "_ret")
+                .replaceAll("field", "_field")
+                .replaceAll("array", "_array");
     }
 }
