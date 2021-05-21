@@ -1,0 +1,88 @@
+import io;
+
+class FibonacciAndFactorial {
+    public static void main(String[] args) {
+        int res;
+        FibonacciAndFactorial o;
+
+        o = new FibonacciAndFactorial();
+
+        res = o.fibonacci(0);
+        io.println(res);
+
+        res = o.fibonacci(1);
+        io.println(res);
+
+        res = o.fibonacci(5);
+        io.println(res);
+
+        res = o.factorial(0);
+        io.println(res);
+
+        res = o.factorial(6);
+        io.println(res);
+
+        res = o.factorialRecursive(4);
+        io.println(res);
+    }
+
+    public int fibonacci(int n) {
+        int res;
+        int a;
+        int b;
+        int temp;
+
+        a = 0;
+        b = 1;
+
+        if (n < 1) {
+            res = 0;
+        }
+        else if (n < 2) {
+            res = 1;
+        }
+        else {
+            n = n - 1;
+            while (0 < n) {
+                temp = a + b;
+                a = b;
+                b = temp;
+                n = n - 1;
+            }
+            res = b;
+        }
+
+        return res;
+    }
+
+    public int factorial(int n) {
+        int res;
+
+        if (n < 2) {
+            res = 1;
+        }
+        else {
+            res = n;
+
+            while (1 < n) {
+                n = n - 1;
+                res = res * n;
+            }
+        }
+
+        return res;
+    }
+
+    public int factorialRecursive(int n) {
+        int res;
+
+        if (n < 2) {
+            res = 1;
+        }
+        else {
+            res = n * this.factorialRecursive(n - 1);
+        }
+
+        return res;
+    }
+}

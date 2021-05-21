@@ -84,4 +84,9 @@ public class SucceedTest {
     public void testMaxOverloading() {
         testSucceed("fixtures/public/MaxOverloading.jmm");
     }
+
+    @Test
+    public void testFibonacciAndFactorial() {
+        testSucceed("fixtures/public/FibonacciAndFactorial.jmm");
+    }
 }
