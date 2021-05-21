@@ -227,7 +227,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             return null;
         }
 
-        if (!initializedVariables.contains(name) && !symbolTable.methodSymbolTableMap.get(signature).parameters.contains(symbol)) {
+        if (!initializedVariables.contains(name) && symbolTable.methodSymbolTableMap.get(signature).localVariables.contains(symbol)) {
+            // Only local variables have to be checked for initialization (parameters are already initialized and we
+            // cannot know if fields are initialized
             String message = "Error: variable " + name + " was used without being initialized.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }

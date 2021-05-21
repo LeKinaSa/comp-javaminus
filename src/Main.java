@@ -49,7 +49,7 @@ public class Main implements JmmParser {
 			return ollirResult;
 		} catch (Exception e) {
 			e.printStackTrace();
-			return new OllirResult((ClassUnit) null, null, Reports.getReports());
+			return new OllirResult(null, null, Reports.getReports());
 		}
 	}
 

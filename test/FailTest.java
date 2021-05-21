@@ -116,6 +116,11 @@ public class FailTest {
     }
 
     @Test
+    public void testSemanticVarNotInit() {
+        testSemantic("fixtures/public/fail/semantic/VarNotInit.jmm");
+    }
+
+    @Test
     public void testThisStaticContext() {
         testSemantic("fixtures/public/fail/semantic/ThisStaticContext.jmm");
     }
