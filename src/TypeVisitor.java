@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
     private final JMMSymbolTable symbolTable;
 
-    private final Set<String> initializedVariables = new HashSet<>();
     private final Set<String> importedClasses;
 
     private static final Type intType = new Type("int", false),
@@ -174,8 +173,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             return null;
         }
 
-        initializedVariables.add(varName);
-
         // TODO: This is shown even if right side is an undefined variable
         if (leftType == null || !leftType.equals(rightType)) {
             String message = "Type mismatch in assignment";
@@ -225,13 +222,6 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String message = "Error: symbol " + name + " is undefined.";
             reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
             return null;
-        }
-
-        if (!initializedVariables.contains(name) && symbolTable.methodSymbolTableMap.get(signature).localVariables.contains(symbol)) {
-            // Only local variables have to be checked for initialization (parameters are already initialized and we
-            // cannot know if fields are initialized
-            String message = "Error: variable " + name + " was used without being initialized.";
-            reports.add(new Report(ReportType.ERROR, Stage.SEMANTIC, Integer.parseInt(node.get("line")), Integer.parseInt(node.get("col")), message));
         }
 
         return null;
@@ -334,9 +324,9 @@ class TypeVisitor extends PreorderJmmVisitor<List<Report>, Object> {
             String extendsName = symbolTable.getSuper();
             String funcName = rightChild.get("name");
 
-            if (leftChild.getKind().equals("Var") && initializedVariables.contains(leftChild.get("name"))) {
+            if (leftChild.getKind().equals("Var")) {
                 Type varType = Utils.getVariableType(symbolTable, signature, leftChild.get("name"));
-                if (varType.getName().equals(className)) { // Same class
+                if (varType != null && varType.getName().equals(className)) { // Same class
                     // TODO: REFACTOR
                     if (extendsName == null) {
                         String calledFuncSignature = Utils.getNodeFunctionSignature(symbolTable, signature, rightChild);
