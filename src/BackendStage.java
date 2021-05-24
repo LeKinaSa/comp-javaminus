@@ -284,6 +284,28 @@ public class BackendStage implements JasminBackend {
             }
 
             Instruction rhs = instruction.getRhs();
+
+            // If the assignment is of type a = a + <b>, where <b> is an integer literal that fits in a signed
+            // byte, use iinc as a more efficient instruction
+            if (type == ElementType.INT32 && rhs.getInstType() == InstructionType.BINARYOPER) {
+                BinaryOpInstruction binaryOpInstruction = (BinaryOpInstruction) rhs;
+
+                if (binaryOpInstruction.getUnaryOperation().getOpType() == OperationType.ADD
+                        && binaryOpInstruction.getRightOperand().isLiteral()
+                        && !binaryOpInstruction.getLeftOperand().isLiteral()) {
+                    Operand leftOperand = (Operand) binaryOpInstruction.getLeftOperand();
+                    LiteralElement rightElement = (LiteralElement) binaryOpInstruction.getRightOperand();
+
+                    int increment = Integer.parseInt(rightElement.getLiteral());
+
+                    if (increment >= -128 && increment <= 127 && leftOperand.getName().equals(destination.getName())) {
+                        lineWithTabs().append("iinc ").append(descriptor.getVirtualReg()).append(" ")
+                                .append(rightElement.getLiteral()).append("\n");
+                        return;
+                    }
+                }
+            }
+
             buildInstruction(ollirClass, method, rhs);
 
             // Local variable
