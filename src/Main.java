@@ -1,4 +1,5 @@
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
@@ -8,6 +9,7 @@ import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
 import pt.up.fe.comp.jmm.JmmParserResult;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.jasmin.JasminResult;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
@@ -34,8 +36,7 @@ public class Main implements JmmParser {
 	public JmmSemanticsResult analyse(JmmParserResult parserResult) {
 		try {
 			AnalysisStage analysisStage = new AnalysisStage();
-			JmmSemanticsResult semanticsResult = analysisStage.semanticAnalysis(parserResult);
-			return semanticsResult;
+			return analysisStage.semanticAnalysis(parserResult);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new JmmSemanticsResult((JmmNode) null, null, Reports.getReports());
@@ -45,11 +46,21 @@ public class Main implements JmmParser {
 	public OllirResult generateOllir(JmmSemanticsResult semanticsResult) {
 		try {
 			OptimizationStage optimizationStage = new OptimizationStage();
-			OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
-			return ollirResult;
+			return optimizationStage.toOllir(semanticsResult);
 		} catch (Exception e) {
 			e.printStackTrace();
 			return new OllirResult(semanticsResult, null, Reports.getReports());
+		}
+	}
+
+	public JasminResult generateJasmin(OllirResult ollirResult) {
+		try {
+			BackendStage backendStage = new BackendStage();
+			return backendStage.toJasmin(ollirResult);
+		}
+		catch (Exception e) {
+			e.printStackTrace();
+			return new JasminResult(ollirResult, null, Reports.getReports());
 		}
 	}
 
@@ -57,10 +68,11 @@ public class Main implements JmmParser {
 		Main main = new Main();
 
 		String jmmCode = new String((new FileInputStream(args[0])).readAllBytes());
+
 		JmmParserResult parserResult = main.parse(jmmCode);
-
 		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
-
 		OllirResult ollirResult = main.generateOllir(semanticsResult);
+		JasminResult jasminResult = main.generateJasmin(ollirResult);
+		jasminResult.compile(new File("compiled"));
     }
 }
