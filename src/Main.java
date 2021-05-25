@@ -64,10 +64,67 @@ public class Main implements JmmParser {
 		}
 	}
 
+	private static class CommandLineArgs {
+		public String path;
+		public boolean optimize;
+		public Integer maxRegisters;
+
+		public CommandLineArgs(String path, boolean optimize, Integer maxRegisters) {
+			this.path = path;
+			this.optimize = optimize;
+			this.maxRegisters = maxRegisters;
+		}
+	}
+
+	private static CommandLineArgs parseCommandLineArgs(String[] args) throws IllegalArgumentException {
+		boolean optimize = false;
+		String path = null;
+		Integer maxRegisters = null;
+
+		for (String arg : args) {
+			if (arg.equals("-o")) {
+				optimize = true;
+			}
+			else if (arg.startsWith("-r=")) {
+				try {
+					maxRegisters = Integer.parseInt(arg.substring(3));
+				}
+				catch (NumberFormatException ex) {
+					throw new IllegalArgumentException("Number of registers must be an integer");
+				}
+
+				if (maxRegisters <= 0) {
+					throw new IllegalArgumentException("Number of registers must be positive");
+				}
+			}
+			else if (path == null) {
+				path = arg;
+			}
+			else {
+				throw new IllegalArgumentException("Invalid argument: " + arg);
+			}
+		}
+
+		if (path == null) {
+			throw new IllegalArgumentException("A path to a JMM file to compile must be provided");
+		}
+
+		return new CommandLineArgs(path, optimize, maxRegisters);
+	}
+
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
-		String jmmCode = new String((new FileInputStream(args[0])).readAllBytes());
+		CommandLineArgs parsedArgs;
+		try {
+			parsedArgs = parseCommandLineArgs(args);
+		}
+		catch (Exception ex) {
+			System.out.println(ex.getMessage());
+			return;
+		}
+
+		String jmmCode = new String((new FileInputStream(parsedArgs.path)).readAllBytes());
 
 		JmmParserResult parserResult = main.parse(jmmCode);
 		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
