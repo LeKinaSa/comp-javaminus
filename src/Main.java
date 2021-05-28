@@ -4,7 +4,6 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 
-import org.specs.comp.ollir.ClassUnit;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
 import pt.up.fe.comp.jmm.JmmParserResult;
@@ -61,18 +60,6 @@ public class Main implements JmmParser {
 		catch (Exception e) {
 			e.printStackTrace();
 			return new JasminResult(ollirResult, null, Reports.getReports());
-		}
-	}
-
-	private static class CommandLineArgs {
-		public String path;
-		public boolean optimize;
-		public Integer maxRegisters;
-
-		public CommandLineArgs(String path, boolean optimize, Integer maxRegisters) {
-			this.path = path;
-			this.optimize = optimize;
-			this.maxRegisters = maxRegisters;
 		}
 	}
 
