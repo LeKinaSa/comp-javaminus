@@ -1,14 +1,12 @@
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.table.Symbol;
 import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
-import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.report.Report;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     private final Map<Symbol, Object> constantTable = new HashMap<>(); // Store all local variables and keep their constant value
@@ -78,7 +76,8 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
      * @return
      */
     public Object constantPropagationAndFolding(JmmNode node) {
-        if (this.getValue(node) != null) {
+        Object value = this.getValue(node);
+        if (value != null) {
             // TODO: replace this node by the constant
             return null;
         }
@@ -114,7 +113,7 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
             case "Not":
                 return (left == null) ? null : !(Boolean) left;
             case "Int":
-                return node.get("value");
+                return Integer.parseInt(node.get("value"));
             case "False":
                 return false;
             case "True":
@@ -173,22 +172,24 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     }
 
     public Object visitAssignment(JmmNode node, List<Report> reports) {
-        // Left Node is the Variable
+        // Left Node is the Variable or ArrayAccess
         JmmNode left = node.getChildren().get(0);
-        String varName = left.get("name");
-        Symbol symbol = this.getVariableSymbol(varName);
+        if (left.getKind().equals("Var")) {
+            // Left Node is Variable
+            String varName = left.get("name");
+            Symbol symbol = this.getVariableSymbol(varName);
 
-        // Constant Propagation
-        JmmNode right = node.getChildren().get(1);
-        this.constantPropagationAndFolding(right);
+            // Constant Propagation
+            JmmNode right = node.getChildren().get(1);
+            this.constantPropagationAndFolding(right);
 
-        // Right Node is the Value
-        right = node.getChildren().get(1);
-        Object value = this.getValue(right);
+            // Right Node is the Value
+            right = node.getChildren().get(1);
+            Object value = this.getValue(right);
 
-        // Modify the Variable Value
-        this.setVariableValue(symbol, value);
-
+            // Modify the Variable Value
+            this.setVariableValue(symbol, value);
+        }
         return null;
     }
 
