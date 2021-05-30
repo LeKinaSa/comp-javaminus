@@ -3,6 +3,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringReader;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
@@ -21,10 +24,6 @@ public class Main implements JmmParser {
 			JMM jmm = new JMM(new StringReader(jmmCode));
     		SimpleNode root = jmm.Program(); // returns reference to root node
 
-			if (Reports.getReports().isEmpty())
-    			root.dump(""); // prints the tree on the screen
-
-			// System.out.println(root.toJson());
     		return new JmmParserResult(root, Reports.getReports());
 		} catch (ParseException ex) {
 			Reports.store(new Report(ReportType.ERROR, Stage.SYNTATIC, ex.currentToken.beginLine, ex.getMessage()));
@@ -99,6 +98,16 @@ public class Main implements JmmParser {
 		return new CommandLineArgs(path, optimize, maxRegisters);
 	}
 
+	private static void printReports(List<Report> reports) {
+		for (Report report : reports) {
+			System.out.println(report);
+		}
+	}
+
+	private static List<Report> getErrorReports(List<Report> reports) {
+		return reports.stream().filter(report -> report.getType() == ReportType.ERROR).collect(Collectors.toList());
+	}
+
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
@@ -112,11 +121,34 @@ public class Main implements JmmParser {
 		}
 
 		String jmmCode = new String((new FileInputStream(parsedArgs.path)).readAllBytes());
-
 		JmmParserResult parserResult = main.parse(jmmCode);
-		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
-		OllirResult ollirResult = main.generateOllir(semanticsResult, parsedArgs);
-		JasminResult jasminResult = main.generateJasmin(ollirResult);
-		jasminResult.compile(new File("compiled"));
+
+		JmmSemanticsResult semanticsResult;
+		if (getErrorReports(parserResult.getReports()).isEmpty()) {
+			semanticsResult = main.analyse(parserResult);
+		}
+		else {
+			printReports(parserResult.getReports());
+			return;
+		}
+
+
+		OllirResult ollirResult;
+		if (getErrorReports(semanticsResult.getReports()).isEmpty()) {
+			ollirResult = main.generateOllir(semanticsResult, parsedArgs);
+		}
+		else {
+			printReports(semanticsResult.getReports());
+			return;
+		}
+
+		JasminResult jasminResult;
+		if (getErrorReports(ollirResult.getReports()).isEmpty()) {
+			jasminResult = main.generateJasmin(ollirResult);
+			jasminResult.compile(new File("compiled"));
+		}
+		else {
+			printReports(ollirResult.getReports());
+		}
     }
 }

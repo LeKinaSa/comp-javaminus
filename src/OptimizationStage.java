@@ -55,7 +55,6 @@ public class OptimizationStage implements JmmOptimization {
         OllirVisitor ollirVisitor = new OllirVisitor(ollirCode, semanticsResult.getSymbolTable());
         ollirVisitor.visit(node, reports);
 
-        System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
         OllirResult result = new OllirResult(semanticsResult, ollirCode.toString(), reports);
 
         ClassUnit ollirClass = result.getOllirClass();
@@ -350,6 +349,12 @@ public class OptimizationStage implements JmmOptimization {
             }
             catch (Exception ex) {
                 System.out.println(ex.getMessage());
+                ollirResult.getReports().add(new Report(
+                        ReportType.ERROR,
+                        Stage.OPTIMIZATION,
+                        -1, -1,
+                        "Unable to compile using at most " + args.maxRegisters + " register(s)"
+                ));
                 return ollirResult;
             }
 
