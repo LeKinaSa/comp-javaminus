@@ -44,6 +44,11 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         this.constantTable.replace(symbol, value);
     }
 
+    /**
+     * Apply constant propagation to this node and all its children
+     * @param node
+     * @return
+     */
     public Object constantPropagation(JmmNode node) {
         String kind = node.getKind();
         switch (kind) {
@@ -63,21 +68,21 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         return null;
     }
 
+    /**
+     * Apply constant propagation or constant folding to this node and all its children
+     * If constant folding applies it will be used first
+     * When constant folding isn't applicable, constant propagation will be applied when possible
+     * @param node
+     * @return
+     */
     public Object constantPropagationAndFolding(JmmNode node) {
-        String kind = node.getKind();
-        switch (kind) {
-            case "Var":
-                String varName = node.get("name");
-                Symbol symbol = this.getVariableSymbol(varName);
-                Object value = this.getVariableValue(symbol);
-                if (value != null) {
-                    // TODO: replace the var node for a constant node with this value
-                }
-                return null;
-            default:
-                for (JmmNode child : node.getChildren()) {
-                    this.constantPropagation(child);
-                }
+        if (this.getValue(node) != null) {
+            // TODO: replace this node by the constant
+            return null;
+        }
+
+        for (JmmNode child : node.getChildren()) {
+            this.constantPropagationAndFolding(child);
         }
         return null;
     }
@@ -161,16 +166,17 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     }
 
     public Object visitAssignment(JmmNode node, List<Report> reports) {
-        // Constant Propagation
-        this.constantPropagationAndFolding(node);
-
         // Left Node is the Variable
         JmmNode left = node.getChildren().get(0);
         String varName = left.get("name");
         Symbol symbol = this.getVariableSymbol(varName);
 
-        // Right Node is the Value
+        // Constant Propagation
         JmmNode right = node.getChildren().get(1);
+        this.constantPropagationAndFolding(right);
+
+        // Right Node is the Value
+        right = node.getChildren().get(1);
         Object value = this.getValue(right);
 
         // Modify the Variable Value
