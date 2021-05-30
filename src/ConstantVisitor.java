@@ -1,5 +1,6 @@
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.table.Symbol;
+import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.analysis.table.Type;
 import pt.up.fe.comp.jmm.ast.AJmmVisitor;
 import pt.up.fe.comp.jmm.report.Report;
@@ -11,13 +12,12 @@ import java.util.Optional;
 
 public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     private final Map<Symbol, Object> constantTable = new HashMap<>(); // Store all local variables and keep their constant value
+    private final JMMSymbolTable symbolTable;
 
-    public ConstantVisitor() {
-        // TODO: should i add the parameters to the constant table?
-        //  i could steal them from the symbol table
-        //  i wouldnt need the visit to the vardecl
+    public ConstantVisitor(SymbolTable symbolTable) {
+        this.symbolTable = (JMMSymbolTable) symbolTable;
+
         addVisit("Method", this::visitMethod);
-        addVisit("VarDecl", this::visitVariableDeclaration);
         addVisit("Expression", this::visitExpression);
         addVisit("If", this::visitIf);
         addVisit("While", this::visitWhile);
@@ -63,8 +63,27 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         return null;
     }
 
+    public Object constantPropagationAndFolding(JmmNode node) {
+        String kind = node.getKind();
+        switch (kind) {
+            case "Var":
+                String varName = node.get("name");
+                Symbol symbol = this.getVariableSymbol(varName);
+                Object value = this.getVariableValue(symbol);
+                if (value != null) {
+                    // TODO: replace the var node for a constant node with this value
+                }
+                return null;
+            default:
+                for (JmmNode child : node.getChildren()) {
+                    this.constantPropagation(child);
+                }
+        }
+        return null;
+    }
+
     public Object getValue(JmmNode node) {
-        Object left = (node.getNumChildren() > 0) ? this.getValue(node.getChildren().get(0)) : null;
+        Object left  = (node.getNumChildren() > 0) ? this.getValue(node.getChildren().get(0)) : null;
         Object right = (node.getNumChildren() > 1) ? this.getValue(node.getChildren().get(1)) : null;
 
         switch (node.getKind()) {
@@ -91,9 +110,8 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
             case "Var":
                 return this.getVariableValue(this.getVariableSymbol(node.get("name")));
             default:
-                break;
+                return null;
         }
-        return null;
     }
 
     // ----- Visits -----
@@ -108,27 +126,23 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     }
 
     private Object visitMethod(JmmNode node, List<Report> reports) {
-        // When entering a new method clear from localVariables
+        // When entering a new method clear the constant table
         this.constantTable.clear();
+
+        String signature = Utils.generateMethodSignature(node);
+
+        List<Symbol> parameters = this.symbolTable.getParameters(signature);
+        for (Symbol parameter : parameters) {
+            this.constantTable.put(parameter, null);
+        }
+
+        List<Symbol> localVariables = this.symbolTable.getLocalVariables(signature);
+        for (Symbol localVariable : localVariables) {
+            this.constantTable.put(localVariable, null);
+        }
+
         return this.defaultVisit(node, reports);
     }
-
-    public Object visitVariableDeclaration(JmmNode node, List<Report> reports) {
-        // When the variable declaration is inside the body of a method
-        if (node.getParent().getKind().equals("Body")) {
-            String name = node.get("name"), typeName = node.get("type");
-
-            Type type = Utils.getTypeFromString(typeName);
-            Symbol symbol = new Symbol(type, name);
-
-            Optional<JmmNode> methodNode = node.getAncestor("Method");
-            if (methodNode.isPresent()) {
-                // Add it to the constant table
-                this.constantTable.put(symbol, null);
-            }
-        }
-        return null;
-    } // TODO
 
     public Object visitExpression(JmmNode node, List<Report> reports) {
         if (node.getNumChildren() == 1) {
@@ -148,10 +162,7 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
 
     public Object visitAssignment(JmmNode node, List<Report> reports) {
         // Constant Propagation
-        this.constantPropagation(node);
-
-        // Constant Folding
-        // TODO
+        this.constantPropagationAndFolding(node);
 
         // Left Node is the Variable
         JmmNode left = node.getChildren().get(0);
@@ -182,21 +193,15 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
 
     public Object visitReturn(JmmNode node, List<Report> reports) {
         // Constant Propagation
-        this.constantPropagation(node);
-
-        // Constant Folding
-        // TODO
+        this.constantPropagationAndFolding(node);
 
         return null;
     }
 
     public Object visitIf(JmmNode node, List<Report> reports) {
         JmmNode condition = node.getChildren().get(0);
-        // Constant Propagation
-        this.constantPropagation(condition);
-
-        // Constant Folding
-        // TODO
+        // Constant Propagation and Folding
+        this.constantPropagationAndFolding(condition);
 
         // Program Flow
         Object value = this.getValue(condition);

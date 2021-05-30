@@ -5,6 +5,7 @@ import java.util.List;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ollir.JmmOptimization;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
@@ -54,7 +55,19 @@ public class OptimizationStage implements JmmOptimization {
 
     @Override
     public JmmSemanticsResult optimize(JmmSemanticsResult semanticsResult) {
-        // THIS IS JUST FOR CHECKPOINT 3
+        if ((TestUtils.getNumReports(semanticsResult.getReports(), ReportType.ERROR) > 0)
+                || (semanticsResult.getRootNode() == null)) {
+            return semanticsResult;
+        }
+
+        JmmNode node = semanticsResult.getRootNode();
+        List<Report> reports = new ArrayList<>();
+
+        SymbolTable symbolTable = semanticsResult.getSymbolTable();
+
+        ConstantVisitor constantVisitor = new ConstantVisitor(symbolTable);
+        constantVisitor.visit(node, reports);
+
         return semanticsResult;
     }
 
