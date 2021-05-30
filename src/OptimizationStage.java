@@ -84,6 +84,12 @@ public class OptimizationStage implements JmmOptimization {
             if (type != ElementType.THIS && type != ElementType.CLASS && descriptor.getScope() == VarScope.LOCAL) {
                 use.get(idx).add(operand.getName());
             }
+
+            if (type == ElementType.INT32 && descriptor.getVarType().getTypeOfElement() == ElementType.ARRAYREF) {
+                // Indexing an array
+                ArrayOperand arrayOperand = (ArrayOperand) operand;
+                addElementToUse(arrayOperand.getIndexOperands().get(0), idx, method, use);
+            }
         }
     }
 
@@ -97,7 +103,19 @@ public class OptimizationStage implements JmmOptimization {
 
                 Operand destination = (Operand) assignInstruction.getDest();
                 Descriptor descriptor = method.getVarTable().get(destination.getName());
-                if (descriptor.getScope() == VarScope.LOCAL) {
+
+                ElementType elementType = assignInstruction.getDest().getType().getTypeOfElement();
+                ElementType varType = descriptor.getVarType().getTypeOfElement();
+
+                if (elementType == ElementType.INT32 && varType == ElementType.ARRAYREF) {
+                    // Assigning to an array (for example, a[b] = c), add array ref to use instead of def
+                    ArrayOperand arrayOperand = (ArrayOperand) destination;
+                    Element indexOperand = arrayOperand.getIndexOperands().get(0);
+
+                    addElementToUse(destination, idx, method, use);
+                    addElementToUse(indexOperand, idx, method, use);
+                }
+                else if (descriptor.getScope() == VarScope.LOCAL) {
                     def.get(idx).add(destination.getName());
                 }
 
@@ -125,8 +143,10 @@ public class OptimizationStage implements JmmOptimization {
                 CallInstruction callInstruction = (CallInstruction) instruction;
                 addElementToUse(callInstruction.getFirstArg(), idx, method, use);
 
-                for (Element element : callInstruction.getListOfOperands()) {
-                    addElementToUse(element, idx, method, use);
+                if (callInstruction.getInvocationType() != CallType.arraylength) {
+                    for (Element element : callInstruction.getListOfOperands()) {
+                        addElementToUse(element, idx, method, use);
+                    }
                 }
                 break;
             }
