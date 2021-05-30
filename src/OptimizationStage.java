@@ -27,6 +27,11 @@ import pt.up.fe.specs.util.SpecsIo;
  */
 
 public class OptimizationStage implements JmmOptimization {
+    private final CommandLineArgs args;
+
+    public OptimizationStage(CommandLineArgs args) {
+        this.args = args;
+    }
 
     @Override
     public OllirResult toOllir(JmmSemanticsResult semanticsResult) {
@@ -51,7 +56,17 @@ public class OptimizationStage implements JmmOptimization {
         ollirVisitor.visit(node, reports);
 
         System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
-        return new OllirResult(semanticsResult, ollirCode.toString(), reports);
+        OllirResult result = new OllirResult(semanticsResult, ollirCode.toString(), reports);
+
+        ClassUnit ollirClass = result.getOllirClass();
+
+        if (args.maxRegisters != null) {
+            ollirClass.buildCFGs();
+            ollirClass.buildVarTables();
+            result = optimize(result);
+        }
+
+        return result;
     }
 
     @Override
@@ -303,6 +318,21 @@ public class OptimizationStage implements JmmOptimization {
         return graphColoring;
     }
 
+    public void assignRegisters(Method method, Map<String, Integer> graphColoring) {
+        int startRegister = 0;
+
+        if (!method.isStaticMethod()) {
+            startRegister += 1; // "this" reference always occupies register 0
+        }
+
+        startRegister += method.getParams().size();
+
+        Map<String, Descriptor> varTable = method.getVarTable();
+        for (Map.Entry<String, Integer> entry : graphColoring.entrySet()) {
+            varTable.get(entry.getKey()).setVirtualReg(startRegister + entry.getValue());
+        }
+    }
+
     @Override
     public OllirResult optimize(OllirResult ollirResult) {
         // THIS IS JUST FOR CHECKPOINT 3
@@ -316,25 +346,14 @@ public class OptimizationStage implements JmmOptimization {
             // Apply graph coloring for register allocation
             Map<String, Integer> graphColoring;
             try {
-                graphColoring = registerAllocation(interferenceGraph, 2);
-                System.out.println(graphColoring);
+                graphColoring = registerAllocation(interferenceGraph, args.maxRegisters);
             }
             catch (Exception ex) {
                 System.out.println(ex.getMessage());
                 return ollirResult;
             }
 
-            /*
-            Map<String, Descriptor> varTable = method.getVarTable();
-            List<Integer> registers = new ArrayList<>();
-
-            for (String varName : graphColoring.keySet()) {
-                registers.add(varTable.get(varName).getVirtualReg());
-            }
-
-            for (Map.Entry<String, Integer> entry : graphColoring.entrySet()) {
-                varTable.get(entry.getKey()).setVirtualReg(registers.get(entry.getValue()));
-            }*/
+            assignRegisters(method, graphColoring);
         }
 
         return ollirResult;

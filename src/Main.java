@@ -42,9 +42,9 @@ public class Main implements JmmParser {
 		}
 	}
 
-	public OllirResult generateOllir(JmmSemanticsResult semanticsResult) {
+	public OllirResult generateOllir(JmmSemanticsResult semanticsResult, CommandLineArgs args) {
 		try {
-			OptimizationStage optimizationStage = new OptimizationStage();
+			OptimizationStage optimizationStage = new OptimizationStage(args);
 			return optimizationStage.toOllir(semanticsResult);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -115,7 +115,7 @@ public class Main implements JmmParser {
 
 		JmmParserResult parserResult = main.parse(jmmCode);
 		JmmSemanticsResult semanticsResult = main.analyse(parserResult);
-		OllirResult ollirResult = main.generateOllir(semanticsResult);
+		OllirResult ollirResult = main.generateOllir(semanticsResult, parsedArgs);
 		JasminResult jasminResult = main.generateJasmin(ollirResult);
 		jasminResult.compile(new File("compiled"));
     }
