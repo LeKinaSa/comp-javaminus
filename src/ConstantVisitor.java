@@ -26,6 +26,8 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         setDefaultVisit(this::defaultVisit);
     }
 
+    // ----- Helper Functions -----
+
     public Symbol getVariableSymbol(String fieldName) {
         for (Symbol symbol: this.constantTable.keySet()) {
             if (symbol.getName().equals(fieldName)) {
@@ -87,6 +89,11 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         return null;
     }
 
+    /**
+     * Get the constant value of this node, or null otherwise
+     * @param node
+     * @return
+     */
     public Object getValue(JmmNode node) {
         Object left  = (node.getNumChildren() > 0) ? this.getValue(node.getChildren().get(0)) : null;
         Object right = (node.getNumChildren() > 1) ? this.getValue(node.getChildren().get(1)) : null;
