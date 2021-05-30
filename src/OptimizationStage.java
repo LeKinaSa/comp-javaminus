@@ -10,7 +10,6 @@ import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
-import pt.up.fe.specs.util.SpecsIo;
 
 /**
  * Copyright 2021 SPeCS.
@@ -49,7 +48,7 @@ public class OptimizationStage implements JmmOptimization {
         OllirVisitor ollirVisitor = new OllirVisitor(ollirCode, semanticsResult.getSymbolTable());
         ollirVisitor.visit(node, reports);
 
-        System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
+        //TODO //System.out.println(ollirCode.toString()); // TODO: used to test ollir generation
         return new OllirResult(semanticsResult, ollirCode.toString(), reports);
     }
 

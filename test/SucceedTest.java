@@ -26,6 +26,7 @@ public class SucceedTest {
         TestUtils.noErrors(semanticsResult.getReports());
 
         OptimizationStage optimizationStage = new OptimizationStage();
+        semanticsResult = optimizationStage.optimize(semanticsResult);
         OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
 
         BackendStage backendStage = new BackendStage();
