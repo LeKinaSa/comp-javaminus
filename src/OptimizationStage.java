@@ -67,6 +67,8 @@ public class OptimizationStage implements JmmOptimization {
 
         ConstantVisitor constantVisitor = new ConstantVisitor(symbolTable);
         constantVisitor.visit(node, reports);
+        constantVisitor.printReplacementInfo();
+        constantVisitor.replaceNodes();
 
         return semanticsResult;
     }
