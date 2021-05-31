@@ -6,12 +6,12 @@ import org.specs.comp.ollir.*;
 import pt.up.fe.comp.TestUtils;
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.analysis.JmmSemanticsResult;
+import pt.up.fe.comp.jmm.analysis.table.SymbolTable;
 import pt.up.fe.comp.jmm.ollir.JmmOptimization;
 import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.comp.jmm.report.Report;
 import pt.up.fe.comp.jmm.report.ReportType;
 import pt.up.fe.comp.jmm.report.Stage;
-import pt.up.fe.specs.util.SpecsIo;
 
 /**
  * Copyright 2021 SPeCS.
@@ -27,11 +27,7 @@ import pt.up.fe.specs.util.SpecsIo;
  */
 
 public class OptimizationStage implements JmmOptimization {
-    private final CommandLineArgs args;
-
-    public OptimizationStage(CommandLineArgs args) {
-        this.args = args;
-    }
+    public CommandLineArgs args = new CommandLineArgs(null, false, null);
 
     @Override
     public OllirResult toOllir(JmmSemanticsResult semanticsResult) {
@@ -45,6 +41,10 @@ public class OptimizationStage implements JmmOptimization {
             var errorReport = new Report(ReportType.ERROR, Stage.LLIR, -1,
                     "Started ollir generation but AST root node is null");
             return new OllirResult(semanticsResult, null, Arrays.asList(errorReport));
+        }
+
+        if (args.optimize) {
+            semanticsResult = optimize(semanticsResult);
         }
 
         JmmNode node = semanticsResult.getRootNode();
@@ -70,7 +70,20 @@ public class OptimizationStage implements JmmOptimization {
 
     @Override
     public JmmSemanticsResult optimize(JmmSemanticsResult semanticsResult) {
-        // THIS IS JUST FOR CHECKPOINT 3
+        if ((TestUtils.getNumReports(semanticsResult.getReports(), ReportType.ERROR) > 0)
+                || (semanticsResult.getRootNode() == null)) {
+            return semanticsResult;
+        }
+
+        JmmNode node = semanticsResult.getRootNode();
+        List<Report> reports = new ArrayList<>();
+
+        SymbolTable symbolTable = semanticsResult.getSymbolTable();
+
+        ConstantVisitor constantVisitor = new ConstantVisitor(symbolTable);
+        constantVisitor.visit(node, reports);
+        constantVisitor.replaceNodes();
+
         return semanticsResult;
     }
 
