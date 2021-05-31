@@ -81,7 +81,31 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
             }
         }
     }
-    
+
+    /**
+     * Apply constant propagation or constant folding to this node and all its children
+     * If constant folding applies it will be used first
+     * When constant folding isn't applicable, constant propagation will be applied when possible
+     * @param node
+     * @return
+     */
+    public void constantPropagationAndFolding(JmmNode node) {
+        Object value = getValue(node);
+        if (value != null) {
+            prepareForReplacement(node, value);
+            return;
+        }
+
+        for (JmmNode child : node.getChildren()) {
+            constantPropagationAndFolding(child);
+        }
+    }
+
+    /**
+     * Prepare the given node to be replaced by its constant value
+     * @param node
+     * @param value
+     */
     public void prepareForReplacement(JmmNode node, Object value) {
         String type = getType(node);
 
@@ -105,6 +129,15 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         }
     }
 
+    /**
+     * Replace the nodes for their values
+     */
+    public void replaceNodes() {
+        for (ConstantPropagationInformation information : constantPropagations) {
+            information.parent.getChildren().set(information.childIndex, information.replacement);
+        }
+    }
+
     public void printReplacementInfo() {
         for (ConstantPropagationInformation information : constantPropagations) {
             System.out.println("Node to replace: " + information.parent.getChildren().get(information.childIndex).getKind());
@@ -114,31 +147,6 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
             else {
                 System.out.println("Replacement: " + information.replacement.getKind());
             }
-        }
-    }
-
-    public void replaceNodes() {
-        for (ConstantPropagationInformation information : constantPropagations) {
-            information.parent.getChildren().set(information.childIndex, information.replacement);
-        }
-    }
-
-    /**
-     * Apply constant propagation or constant folding to this node and all its children
-     * If constant folding applies it will be used first
-     * When constant folding isn't applicable, constant propagation will be applied when possible
-     * @param node
-     * @return
-     */
-    public void constantPropagationAndFolding(JmmNode node) {
-        Object value = getValue(node);
-        if (value != null) {
-            prepareForReplacement(node, value);
-            return;
-        }
-
-        for (JmmNode child : node.getChildren()) {
-            constantPropagationAndFolding(child);
         }
     }
 
