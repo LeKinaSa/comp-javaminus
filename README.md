@@ -26,14 +26,26 @@
 (Describe what your tool does and its main features.)
 Our compiler compiles code. ???
 
+All errors detected during a compilation phase can be seen in error messages. These contain the line and column where the error occurred and a small explanation of the error.
+
+It identifies uses of variables and evaluation of expressions that can be replaced by constants. It also tries to identify program flow on `if` statements, analysing the value of the condition.
+
+
 ### DEALING WITH SYNTACTIC ERRORS
-The grammar used is mostly LL(1), only using a lookahead of 2 to differentiate between a `VarDeclaration` and a `Statement`; it also doesn't allow `Identifier;` to be obtained from `Statement`.
-It has error handling for while loops, only exiting at the end of the analysis.
-It respects the operator precedence.
+* The grammar used is mostly LL(1), only using a lookahead of 2 to differentiate between a `VarDeclaration` and a `Statement`; it also doesn't allow `Identifier;` to be obtained from `Statement`.
+* It includes error recovery from `while` loops, only exiting after the entire code has been analysed.
+* It respects the operator precedence.
 
 (Describe how the syntactic error recovery of your tool works. Does it exit after the first error?)
 
 ### SEMANTIC ANALYSIS
+* No variable is declared more than once
+* No function is declared more than once (although it can be declared more than once if the arguments are different, in number and/or type)
+* No function call is made with wrong argument types ??
+* The operators receive the correct types
+* Both sides of the assignment have the same type
+* ??
+
 (Refer the semantic rules implemented by your tool.)
 
 ### CODE GENERATION
@@ -52,4 +64,6 @@ Most of the tasks were completed as a group. ___
 (Identify the most positive aspects of your tool)
 
 ### CONS
+* There might be an issue with the register allocation of variables that are assigned and never used
+
 (Identify the most negative aspects of your tool)
