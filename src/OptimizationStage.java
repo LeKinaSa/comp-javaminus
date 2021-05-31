@@ -27,11 +27,7 @@ import pt.up.fe.comp.jmm.report.Stage;
  */
 
 public class OptimizationStage implements JmmOptimization {
-    private final CommandLineArgs args;
-
-    public OptimizationStage(CommandLineArgs args) {
-        this.args = args;
-    }
+    public CommandLineArgs args = new CommandLineArgs(null, false, null);
 
     @Override
     public OllirResult toOllir(JmmSemanticsResult semanticsResult) {

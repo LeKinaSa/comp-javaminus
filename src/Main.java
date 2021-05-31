@@ -43,7 +43,8 @@ public class Main implements JmmParser {
 
 	public OllirResult generateOllir(JmmSemanticsResult semanticsResult, CommandLineArgs args) {
 		try {
-			OptimizationStage optimizationStage = new OptimizationStage(args);
+			OptimizationStage optimizationStage = new OptimizationStage();
+			optimizationStage.args = args;
 			return optimizationStage.toOllir(semanticsResult);
 		} catch (Exception e) {
 			e.printStackTrace();
