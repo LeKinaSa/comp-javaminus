@@ -57,6 +57,7 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
                 Symbol symbol = this.getVariableSymbol(varName);
                 Object value = this.getVariableValue(symbol);
                 if (value != null) {
+                    this.getType(node);
                     // TODO: replace the var node for a constant node with this value
                 }
                 return null;
@@ -78,6 +79,7 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     public Object constantPropagationAndFolding(JmmNode node) {
         Object value = this.getValue(node);
         if (value != null) {
+            this.getType(node);
             // TODO: replace this node by the constant
             return null;
         }
@@ -89,7 +91,7 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
     }
 
     /**
-     * Get the constant value of this node, or null otherwise
+     * Get the constant value of this node, or null if impossible
      * @param node
      * @return
      */
@@ -120,6 +122,35 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
                 return true;
             case "Var":
                 return this.getVariableValue(this.getVariableSymbol(node.get("name")));
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * Get the type of this node, or null if impossible
+     *
+     * @param node
+     * @return
+     */
+    public String getType(JmmNode node) {
+        switch (node.getKind()) {
+            case "Add":
+            case "Sub":
+            case "Mul":
+            case "Div":
+            case "Int":
+                return "int";
+
+            case "LessThan":
+            case "And":
+            case "Not":
+            case "False":
+            case "True":
+                return "boolean";
+
+            case "Var":
+                return this.getVariableSymbol(node.get("name")).getType().getName();
             default:
                 return null;
         }
