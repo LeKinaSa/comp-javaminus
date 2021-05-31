@@ -27,7 +27,8 @@ public class SucceedTest {
         System.out.println("Semantic reports: " + semanticsResult.getReports());
         TestUtils.noErrors(semanticsResult.getReports());
 
-        OptimizationStage optimizationStage = new OptimizationStage(args);
+        OptimizationStage optimizationStage = new OptimizationStage();
+        optimizationStage.args = args;
         OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
 
         BackendStage backendStage = new BackendStage();
@@ -62,6 +63,8 @@ public class SucceedTest {
         testSucceed("fixtures/public/FindMaximum.jmm");
     }
 
+    // The following tests take user input so they must be compiled and executed manually
+    /*
     @Test
     public void testLife() {
         testSucceed("fixtures/public/Life.jmm");
@@ -76,6 +79,7 @@ public class SucceedTest {
     public void testTicTacToe() {
         testSucceed("fixtures/public/TicTacToe.jmm");
     }
+    */
 
     @Test
     public void testWhileAndIf() {

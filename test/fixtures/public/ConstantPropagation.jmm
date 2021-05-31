@@ -1,0 +1,50 @@
+import ioPlus;
+class ConstantPropagation {
+	public static void main(String[] args) {
+    	    int a;
+    	    int b;
+    	    int c;
+    	    int d;
+    	    boolean e;
+    	    boolean f;
+    	    int[] k;
+
+    		a = 3;
+    		c = 4 + 2; // 4 + 2 should be replaced by 6
+            b = a + 2; // a + 2 should be replaced by 5
+            d = b; // b should be replaced by 5
+            e = false;
+            f = e; // e should be replaced by false
+            k = new int[8];
+            k[1] = a;
+
+            if (a < 1) { // a < 1 is false
+                a = 4;
+            }
+            else { // So the program will always run else
+                a = 1;
+            }
+            b = a; // a should be replaced by 1
+            if (true) { // The program will always run the code inside this block
+                ioPlus.printHelloWorld();
+            }
+            else {
+                a = 3;
+            }
+            b = a; // a should be replaced by 1
+            if (k[1] < 1) { // The compiler doesn't know if it is going to run the if block or the else block, so all variables are set to non-constant
+                c = 1;
+            }
+            else {
+                c = 3;
+            }
+            c = c; // c shouldn't be replaced here
+
+            a = 4;
+            while (1 < a) { // The compiler doesn't know the program flow, so it makes all variables non-constant
+                a = a - 1;
+            }
+            c = a; // a shouldn't be replaced here
+
+    	}
+}
