@@ -2,22 +2,22 @@
 
 * Clara Martins
     * **Nr:** 201806528
-    * **Grade:** 0 to 20 value
+    * **Grade:** 18
     * **Contribution:** 25 %
 * Daniel Monteiro
     * **Nr:** 201806185
-    * **Grade:** 0 to 20 value
+    * **Grade:** 18
     * **Contribution:** 20 %
 * Gonçalo Pascoal
     * **Nr:** 201806332
-    * **Grade:** 0 to 20 value
+    * **Grade:** 18
     * **Contribution:** 30 %
 * Rui Pinto
     * **Nr:** 201806441
-    * **Grade:** 0 to 20 value
+    * **Grade:** 18
     * **Contribution:** 25 %
 
-**GLOBAL Grade of the project:** <0 to 20>
+**GLOBAL Grade of the project:** 18
 
 ### SUMMARY
 
@@ -25,13 +25,10 @@ All errors detected during a compilation phase can be seen in error messages. Th
 
 It identifies uses of variables and evaluation of expressions that can be replaced by constants. It also tries to identify program flow on `if` statements, analysing the value of the condition.
 
-
 ### DEALING WITH SYNTACTIC ERRORS
-* The grammar used is mostly LL(1), only using a lookahead of 2 to differentiate between a `VarDeclaration` and a `Statement`; it also doesn't allow `Identifier;` to be obtained from `Statement`.
-* It includes error recovery from `while` loops, only exiting after the entire code has been analysed.
-* It respects the operator precedence.
-
-(Describe how the syntactic error recovery of your tool works. Does it exit after the first error?)
+* The grammar used is mostly LL(1), only using a lookahead of 2 to differentiate between a `VarDeclaration` and a `Statement`; it also doesn't allow `Identifier;` to be obtained from `Statement`
+* It includes error recovery from `while` loops, only exiting after the entire code has been analysed
+* It respects the operator precedence
 
 ### SEMANTIC ANALYSIS
 * No variable is declared more than once
@@ -41,7 +38,8 @@ It identifies uses of variables and evaluation of expressions that can be replac
 * Both sides of the assignment have the same type
 
 ### CODE GENERATION
-* Code generation based on OLLIR.
+* Code generation based on OLLIR
+* Stack and local variable limits are calculated based on the code generated
 
 ### TASK DISTRIBUTION
 Most of the tasks were completed as a group.
