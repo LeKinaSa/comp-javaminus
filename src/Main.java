@@ -1,11 +1,7 @@
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.StringReader;
+import java.io.*;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import pt.up.fe.comp.jmm.JmmNode;
 import pt.up.fe.comp.jmm.JmmParser;
@@ -112,6 +108,8 @@ public class Main implements JmmParser {
     public static void main(String[] args) throws IOException {
 		Main main = new Main();
 
+		String folder = ".";
+
 		CommandLineArgs parsedArgs;
 		try {
 			parsedArgs = parseCommandLineArgs(args);
@@ -127,16 +125,39 @@ public class Main implements JmmParser {
 		JmmSemanticsResult semanticsResult;
 		if (getErrorReports(parserResult.getReports()).isEmpty()) {
 			semanticsResult = main.analyse(parserResult);
+
+			// ClassName.json
+			File astJsonFile = new File(folder + File.separator + semanticsResult.getSymbolTable().getClassName()
+					+ ".json");
+			astJsonFile.createNewFile();
+			FileWriter writer = new FileWriter(astJsonFile);
+			writer.write(semanticsResult.getRootNode().toJson());
+			writer.close();
+
+			// ClassName.symbols.txt
+			File symbolsFile = new File(folder + File.separator + semanticsResult.getSymbolTable().getClassName()
+					+ ".symbols.txt");
+			symbolsFile.createNewFile();
+			writer = new FileWriter(symbolsFile);
+			writer.write(semanticsResult.getSymbolTable().print());
+			writer.close();
 		}
 		else {
 			printReports(parserResult.getReports());
 			return;
 		}
 
-
 		OllirResult ollirResult;
 		if (getErrorReports(semanticsResult.getReports()).isEmpty()) {
 			ollirResult = main.generateOllir(semanticsResult, parsedArgs);
+
+			// ClassName.ollir
+			File ollirCodeFile = new File(folder + File.separator + ollirResult.getOllirClass().getClassName()
+					+ ".ollir");
+			ollirCodeFile.createNewFile();
+			FileWriter writer = new FileWriter(ollirCodeFile);
+			writer.write(ollirResult.getOllirCode());
+			writer.close();
 		}
 		else {
 			printReports(semanticsResult.getReports());
@@ -146,7 +167,16 @@ public class Main implements JmmParser {
 		JasminResult jasminResult;
 		if (getErrorReports(ollirResult.getReports()).isEmpty()) {
 			jasminResult = main.generateJasmin(ollirResult);
-			jasminResult.compile(new File("compiled"));
+
+			// ClassName.j
+			File jasminCodeFile = new File(folder + File.separator + jasminResult.getClassName() + ".j");
+			jasminCodeFile.createNewFile();
+			FileWriter writer = new FileWriter(jasminCodeFile);
+			writer.write(jasminResult.getJasminCode());
+			writer.close();
+
+			// ClassName.class
+			jasminResult.compile(new File(folder));
 		}
 		else {
 			printReports(ollirResult.getReports());
