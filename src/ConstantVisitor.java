@@ -138,18 +138,6 @@ public class ConstantVisitor extends AJmmVisitor<List<Report>, Object> {
         }
     }
 
-    public void printReplacementInfo() {
-        for (ConstantPropagationInformation information : constantPropagations) {
-            System.out.println("Node to replace: " + information.parent.getChildren().get(information.childIndex).getKind());
-            if (information.replacement.getKind().equals("Int")) {
-                System.out.println("Replacement: " + information.replacement.get("value"));
-            }
-            else {
-                System.out.println("Replacement: " + information.replacement.getKind());
-            }
-        }
-    }
-
     /**
      * Get the constant value of this node, or null if impossible
      * @param node
