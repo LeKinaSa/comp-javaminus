@@ -14,7 +14,7 @@ import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.specs.util.SpecsIo;
 
 public class SucceedTest {
-    public void testSucceed(String path) {
+    public void testSucceed(String path, CommandLineArgs args) {
         String jmmCode = SpecsIo.getResource(path);
         JmmParserResult result = TestUtils.parse(jmmCode);
         TestUtils.noErrors(result.getReports());
@@ -26,6 +26,7 @@ public class SucceedTest {
         TestUtils.noErrors(semanticsResult.getReports());
 
         OptimizationStage optimizationStage = new OptimizationStage();
+        optimizationStage.args = args;
         OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
 
         BackendStage backendStage = new BackendStage();
@@ -33,6 +34,10 @@ public class SucceedTest {
 
         System.out.println(jasminResult.getJasminCode());
         jasminResult.run();
+    }
+
+    public void testSucceed(String path) {
+        testSucceed(path, new CommandLineArgs(null, false, null));
     }
 
     @Test
@@ -60,6 +65,8 @@ public class SucceedTest {
         testSucceed("fixtures/public/FindMaximum.jmm");
     }
 
+    // The following tests take user input so they must be compiled and executed manually
+    /*
     @Test
     public void testLife() {
         testSucceed("fixtures/public/Life.jmm");
@@ -74,6 +81,7 @@ public class SucceedTest {
     public void testTicTacToe() {
         testSucceed("fixtures/public/TicTacToe.jmm");
     }
+    */
 
     @Test
     public void testWhileAndIf() {
@@ -88,5 +96,10 @@ public class SucceedTest {
     @Test
     public void testFibonacciAndFactorial() {
         testSucceed("fixtures/public/FibonacciAndFactorial.jmm");
+    }
+
+    @Test
+    public void testConstantPropagation() {
+        testSucceed("fixtures/public/ConstantPropagation.jmm", new CommandLineArgs(null, true, null));
     }
 }

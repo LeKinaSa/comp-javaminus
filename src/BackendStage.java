@@ -1,10 +1,4 @@
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
+import java.util.*;
 
 import org.specs.comp.ollir.*;
 
@@ -45,7 +39,7 @@ public class BackendStage implements JasminBackend {
             ollirClass.buildCFGs(); // build the CFG of each method
             //ollirClass.outputCFGs(); // output to .dot files the CFGs, one per method
             ollirClass.buildVarTables(); // build the table of variables for each method
-            ollirClass.show(); // print to console main information about the input OLLIR
+            //ollirClass.show(); // print to console main information about the input OLLIR
 
             // Convert the OLLIR to a String containing the equivalent Jasmin code
             buildJasminCode(ollirClass);
@@ -157,13 +151,8 @@ public class BackendStage implements JasminBackend {
     }
 
     private int getLocalsLimit(Method method) {
-        Set<Integer> usedRegisters = new HashSet<>();
-        for (Descriptor var : method.getVarTable().values()) {
-            if (var.getScope() == VarScope.LOCAL || var.getScope() == VarScope.PARAMETER) {
-                usedRegisters.add(var.getVirtualReg());
-            }
-        }
-        return usedRegisters.size();
+        OptionalInt limit = method.getVarTable().values().stream().mapToInt(Descriptor::getVirtualReg).max();
+        return limit.orElse(0) + 1;
     }
 
     private void buildMethod(ClassUnit ollirClass, Method method) {
