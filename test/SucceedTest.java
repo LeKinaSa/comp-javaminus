@@ -14,9 +14,7 @@ import pt.up.fe.comp.jmm.ollir.OllirResult;
 import pt.up.fe.specs.util.SpecsIo;
 
 public class SucceedTest {
-    public void testSucceed(String path) {
-        CommandLineArgs args = new CommandLineArgs(path, false, null);
-
+    public void testSucceed(String path, CommandLineArgs args) {
         String jmmCode = SpecsIo.getResource(path);
         JmmParserResult result = TestUtils.parse(jmmCode);
         TestUtils.noErrors(result.getReports());
@@ -36,6 +34,10 @@ public class SucceedTest {
 
         System.out.println(jasminResult.getJasminCode());
         jasminResult.run();
+    }
+
+    public void testSucceed(String path) {
+        testSucceed(path, new CommandLineArgs(null, false, null));
     }
 
     @Test
@@ -94,5 +96,10 @@ public class SucceedTest {
     @Test
     public void testFibonacciAndFactorial() {
         testSucceed("fixtures/public/FibonacciAndFactorial.jmm");
+    }
+
+    @Test
+    public void testConstantPropagation() {
+        testSucceed("fixtures/public/ConstantPropagation.jmm", new CommandLineArgs(null, true, null));
     }
 }
