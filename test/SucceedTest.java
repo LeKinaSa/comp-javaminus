@@ -15,6 +15,8 @@ import pt.up.fe.specs.util.SpecsIo;
 
 public class SucceedTest {
     public void testSucceed(String path) {
+        CommandLineArgs args = new CommandLineArgs(path, false, null);
+
         String jmmCode = SpecsIo.getResource(path);
         JmmParserResult result = TestUtils.parse(jmmCode);
         TestUtils.noErrors(result.getReports());
@@ -25,7 +27,7 @@ public class SucceedTest {
         System.out.println("Semantic reports: " + semanticsResult.getReports());
         TestUtils.noErrors(semanticsResult.getReports());
 
-        OptimizationStage optimizationStage = new OptimizationStage();
+        OptimizationStage optimizationStage = new OptimizationStage(args);
         OllirResult ollirResult = optimizationStage.toOllir(semanticsResult);
 
         BackendStage backendStage = new BackendStage();
