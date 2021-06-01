@@ -276,6 +276,7 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         JmmNode expressionNode = node.getChildren().get(0), bodyNode = node.getChildren().get(1);
         String expressionOllir = visit(expressionNode, reports);
 
+        // If
         if (expressionOllir.split(" ").length == 1) {
             lineWithTabs().append("if (").append(expressionOllir)
                     .append(" !.bool ").append(expressionOllir)
@@ -292,21 +293,21 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         }
         removeTab();
 
+        lineWithTabs().append("body").append(whileCount).append(":\n");
+
         addTab();
+        // Do
+        visit(bodyNode, reports);
+        removeTab();
+
+        addTab();
+        // While
         lineWithTabs().append("if (").append(expressionOllir);
         if (expressionOllir.split(" ").length == 1) {
             // FIXME: Temporary fix since OLLIR parser only accepts binary operations in if and while statements
             ollirBuilder.append(" &&.bool 1.bool");
         }
         ollirBuilder.append(") goto body").append(whileCount).append(";\n");
-        lineWithTabs().append("goto endloop").append(whileCount).append(";\n");
-        removeTab();
-
-        lineWithTabs().append("body").append(whileCount).append(":\n");
-
-        addTab();
-        visit(bodyNode, reports);
-        lineWithTabs().append("goto loop").append(whileCount).append(";\n");
         removeTab();
 
         lineWithTabs().append("endloop").append(whileCount).append(":\n");
