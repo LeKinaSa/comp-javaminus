@@ -271,10 +271,27 @@ public class OllirVisitor extends AJmmVisitor<List<Report>, String> {
         int whileCount = whileStatementMap.get(signature);
 
         lineWithTabs().append("loop").append(whileCount).append(":\n");
+        addTab();
 
         JmmNode expressionNode = node.getChildren().get(0), bodyNode = node.getChildren().get(1);
         String expressionOllir = visit(expressionNode, reports);
-        
+
+        if (expressionOllir.split(" ").length == 1) {
+            lineWithTabs().append("if (").append(expressionOllir)
+                    .append(" !.bool ").append(expressionOllir)
+                    .append(") goto endloop").append(whileCount).append(";\n");
+        }
+        else {
+            incrementTempVariable(signature);
+            String tempVar = "t" + tempVariablesMap.get(signature) + ".bool";
+            lineWithTabs().append(tempVar).append(" :=.bool ")
+                    .append(expressionOllir).append(";\n");
+            lineWithTabs().append("if (").append(tempVar)
+                    .append(" !.bool ").append(tempVar)
+                    .append(") goto endloop").append(whileCount).append(";\n");
+        }
+        removeTab();
+
         addTab();
         lineWithTabs().append("if (").append(expressionOllir);
         if (expressionOllir.split(" ").length == 1) {
